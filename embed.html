@@ -636,6 +636,7 @@
       }
 
       function msStep() {
+        if (!ms) { resizeBg(); return; }
         var g = ms, now = performance.now(), quota = g.quota, did = 0, cell;
         if (g.over) {
           if (g.wiping || now - g.endAt < (g.over === 1 ? 3500 : 8000)) return;
@@ -705,6 +706,7 @@
       }
 
       function resizeBg() {
+        if (!window.innerWidth || !window.innerHeight) return; // Google Sites can load the frame at zero size
         if (!ms || Math.abs(window.innerWidth / window.innerHeight - ms.aspect) / ms.aspect > .3) msNew();
         if (reduce) {
           var stop = performance.now() + 400;
