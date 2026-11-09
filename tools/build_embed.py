@@ -7,6 +7,9 @@ network access and loads anywhere Google Sites loads.
 import json
 import pathlib
 import re
+import shutil
+import subprocess
+import tempfile
 
 root = pathlib.Path(__file__).resolve().parent.parent
 html = (root / "index.html").read_text(encoding="utf-8")
@@ -29,6 +32,20 @@ def to_js(value):
 marker = "<script>\n    (function () {"
 if html.count(marker) != 1:
     raise SystemExit("Could not find the main script in index.html")
+
+for required in ('id="additions"', 'id="cv"', 'id="tl-range"', "forms.gle/joeZed9KM3tsd2Td8", "requested-by"):
+    if required not in html:
+        raise SystemExit(f"Not publishing: index.html is missing {required}")
+
+node = shutil.which("node")
+if node:
+    for number, script in enumerate(re.findall(r"<script>(.*?)</script>", html, re.S), 1):
+        with tempfile.NamedTemporaryFile("w", suffix=".js", encoding="utf-8", delete=False) as handle:
+            handle.write(script)
+        checked = subprocess.run([node, "--check", handle.name], capture_output=True, text=True)
+        pathlib.Path(handle.name).unlink()
+        if checked.returncode != 0:
+            raise SystemExit(f"Not publishing: script {number} in index.html has an error:\n{checked.stderr[-800:]}")
 
 data = f"<script>window.MUTAGEN_DATA={to_js(items)};window.MUTAGEN_WIDGETS={to_js(widgets)};</script>\n  "
 (root / "embed.html").write_text(html.replace(marker, data + marker), encoding="utf-8", newline="\n")
