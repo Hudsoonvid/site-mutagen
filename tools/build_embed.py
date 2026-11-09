@@ -33,6 +33,11 @@ marker = "<script>\n    (function () {"
 if html.count(marker) != 1:
     raise SystemExit("Could not find the main script in index.html")
 
+used = {item.get("widget") for item in items}
+for file in (root / "widgets").glob("*.html"):
+    if f"widgets/{file.name}" not in used:
+        file.unlink()
+
 for required in ('id="additions"', 'id="cv"', 'id="tl-range"', "forms.gle/joeZed9KM3tsd2Td8", "requested-by"):
     if required not in html:
         raise SystemExit(f"Not publishing: index.html is missing {required}")

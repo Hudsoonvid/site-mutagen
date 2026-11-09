@@ -1,0 +1,178 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Mutagen control room</title>
+  <style>
+    :root { --ink: #1d2a1f; --muted: #56624f; --line: #cfd6bb; --paper: #fffef6; --bg: #e9eddc; --green: #2d5233; font-family: system-ui, -apple-system, "Segoe UI", sans-serif; color: var(--ink); }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--bg); }
+    main { width: min(100%, 76rem); margin: 0 auto; padding: 1.25rem 1rem 3rem; }
+    h1 { margin: 0; font-family: Georgia, serif; font-size: 2rem; color: var(--green); }
+    h2 { margin: 0 0 .75rem; font-family: Georgia, serif; font-size: 1.3rem; color: var(--green); }
+    header { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: .5rem 1rem; margin-bottom: 1rem; }
+    #live { font-family: ui-monospace, Consolas, monospace; font-size: .75rem; color: var(--muted); }
+    section { margin-top: 1rem; padding: 1rem; background: var(--paper); border: 1px solid var(--line); border-radius: .75rem; }
+    .stats, .filters { display: flex; flex-wrap: wrap; gap: .5rem; }
+    .stat { padding: .4rem .75rem; border: 1px solid var(--line); border-radius: .4rem; background: #f7f8ea; font-size: .85rem; }
+    .stat b { font-size: 1.05rem; }
+    button { min-height: 2.1rem; padding: .3rem .7rem; border: 1px solid var(--green); border-radius: .35rem; background: #fff; color: var(--green); font: inherit; font-size: .82rem; cursor: pointer; }
+    button:hover { background: #eef2df; }
+    button.on, button.main { background: var(--green); color: #fff; }
+    button.danger { border-color: #a33a30; color: #a33a30; }
+    button:disabled { opacity: .5; cursor: default; }
+    button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 3px solid #91aa7f; outline-offset: 1px; }
+    .scroll { overflow-x: auto; margin-top: .75rem; }
+    table { width: 100%; border-collapse: collapse; font-size: .86rem; }
+    th, td { padding: .5rem .55rem; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; overflow-wrap: anywhere; }
+    th { color: var(--muted); font-size: .72rem; text-transform: uppercase; letter-spacing: .06em; }
+    td.when, td.who { white-space: nowrap; }
+    .badge { display: inline-block; padding: .1rem .45rem; border-radius: .3rem; font-size: .74rem; font-weight: 650; white-space: nowrap; }
+    .site { background: #dcefd8; color: #245a2c; } .removed { background: #f6dcd8; color: #8c2f26; } .waiting { background: #fbefc9; color: #6d5310; }
+    .item { padding: .8rem 0; border-bottom: 1px solid var(--line); }
+    .item:last-child { border-bottom: 0; }
+    label { display: block; margin: .35rem 0 .15rem; color: var(--muted); font-size: .74rem; }
+    input, textarea { width: 100%; padding: .4rem .5rem; border: 1px solid var(--line); border-radius: .35rem; background: #fff; color: var(--ink); font: inherit; font-size: .88rem; }
+    textarea { min-height: 3.4rem; resize: vertical; }
+    .row { display: flex; flex-wrap: wrap; gap: .45rem; margin-top: .55rem; }
+    .meta { color: var(--muted); font-size: .76rem; }
+    .empty { color: var(--muted); font-size: .86rem; }
+  </style>
+</head>
+<body>
+<main>
+  <header><h1>Mutagen control room</h1><span id="live">Connecting…</span></header>
+  <div class="stats" id="stats"></div>
+
+  <section>
+    <h2>Requests</h2>
+    <div class="filters" id="filters"></div>
+    <div class="scroll"><table><thead><tr><th>When</th><th>Who</th><th>Request</th><th>Status</th><th>Reason</th></tr></thead><tbody id="rows"></tbody></table></div>
+  </section>
+
+  <section>
+    <h2>New widget</h2>
+    <label for="new-name">Name</label><input id="new-name" maxlength="120">
+    <label for="new-prompt">What it should do</label><textarea id="new-prompt" maxlength="4000"></textarea>
+    <div class="row"><button class="main" id="new-go">Generate widget</button></div>
+  </section>
+
+  <section>
+    <h2>On the site</h2>
+    <div id="items"></div>
+  </section>
+
+  <section>
+    <h2>Dashboard actions</h2>
+    <div class="scroll"><table><thead><tr><th>When</th><th>Action</th><th>Target</th><th>State</th></tr></thead><tbody id="cmds"></tbody></table></div>
+  </section>
+</main>
+
+<script>
+  var FILTERS = ['All', 'On site', 'Removed', 'Waiting'], filter = 'All', data = null, itemsKey = '';
+  var $ = function (id) { return document.getElementById(id); };
+  function el(tag, cls, text) { var e = document.createElement(tag); if (cls) e.className = cls; if (text !== undefined) e.textContent = text; return e; }
+  function cell(tr, text, cls) { var td = el('td', cls, text); tr.appendChild(td); return td; }
+  function fail(error) { $('live').textContent = 'Could not reach the sheet: ' + (error && error.message || error); }
+
+  function send(cmd, button) {
+    if (button) button.disabled = true;
+    google.script.run.withSuccessHandler(refresh).withFailureHandler(function (e) { if (button) button.disabled = false; fail(e); }).dashQueue(cmd);
+  }
+
+  function drawFilters() {
+    var box = $('filters'); box.textContent = '';
+    FILTERS.forEach(function (name) {
+      var b = el('button', name === filter ? 'on' : '', name);
+      b.onclick = function () { filter = name; drawFilters(); drawRows(); };
+      box.appendChild(b);
+    });
+  }
+
+  function drawRows() {
+    var body = $('rows'); body.textContent = '';
+    var list = data.rows.filter(function (r) { return filter === 'All' || r.status === filter; }).reverse();
+    if (!list.length) { var tr = el('tr'); var td = cell(tr, 'Nothing here.', 'empty'); td.colSpan = 5; body.appendChild(tr); return; }
+    list.forEach(function (r) {
+      var tr = el('tr');
+      cell(tr, r.when, 'when'); cell(tr, r.who, 'who'); cell(tr, r.text);
+      var st = cell(tr, ''); st.appendChild(el('span', 'badge ' + (r.status === 'On site' ? 'site' : r.status === 'Removed' ? 'removed' : 'waiting'), r.status));
+      cell(tr, r.reason || '');
+      body.appendChild(tr);
+    });
+  }
+
+  function drawItems() {
+    var key = JSON.stringify(data.items);
+    if (key === itemsKey) return;
+    var active = document.activeElement;
+    if (active && $('items').contains(active) && /INPUT|TEXTAREA/.test(active.tagName)) return;
+    itemsKey = key;
+    var box = $('items'); box.textContent = '';
+    if (!data.items.length) { box.appendChild(el('p', 'empty', 'Nothing on the site yet.')); return; }
+    data.items.slice().reverse().forEach(function (it, i) {
+      var wrap = el('div', 'item');
+      wrap.appendChild(el('div', 'meta', 'Requested by ' + it.requestedBy + (it.widget ? ' · widget' : ' · card only')));
+      var nameId = 'n' + i, promptId = 'p' + i;
+      var nameLabel = el('label', '', 'Name'); nameLabel.htmlFor = nameId;
+      var name = el('input'); name.id = nameId; name.maxLength = 120; name.value = it.text;
+      var promptLabel = el('label', '', 'Prompt'); promptLabel.htmlFor = promptId;
+      var prompt = el('textarea'); prompt.id = promptId; prompt.maxLength = 4000; prompt.value = it.prompt || it.text;
+      var row = el('div', 'row');
+      var rename = el('button', '', 'Save name');
+      rename.onclick = function () { send({ action: 'rename', target: it.submittedAt, name: name.value }, rename); };
+      var reprompt = el('button', '', 'Save prompt and rebuild');
+      reprompt.onclick = function () { send({ action: 'reprompt', target: it.submittedAt, name: name.value, prompt: prompt.value }, reprompt); };
+      var regen = el('button', '', 'Regenerate');
+      regen.onclick = function () { send({ action: 'regenerate', target: it.submittedAt }, regen); };
+      var del = el('button', 'danger', 'Delete');
+      del.onclick = function () {
+        if (del.dataset.sure) { send({ action: 'delete', target: it.submittedAt }, del); return; }
+        del.dataset.sure = '1'; del.textContent = 'Click again to delete';
+        setTimeout(function () { delete del.dataset.sure; del.textContent = 'Delete'; }, 4000);
+      };
+      [rename, reprompt, regen, del].forEach(function (b) { row.appendChild(b); });
+      [wrap.lastChild].forEach(function () {});
+      wrap.appendChild(nameLabel); wrap.appendChild(name); wrap.appendChild(promptLabel); wrap.appendChild(prompt); wrap.appendChild(row);
+      box.appendChild(wrap);
+    });
+  }
+
+  function drawCommands() {
+    var body = $('cmds'); body.textContent = '';
+    var list = data.commands.slice().reverse().slice(0, 15);
+    if (!list.length) { var tr = el('tr'); var td = cell(tr, 'No actions yet.', 'empty'); td.colSpan = 4; body.appendChild(tr); return; }
+    list.forEach(function (c) {
+      var tr = el('tr');
+      cell(tr, c.when, 'when'); cell(tr, c.action); cell(tr, c.name || c.targetName || '');
+      var st = cell(tr, ''); st.appendChild(el('span', 'badge ' + (c.done ? 'site' : 'waiting'), c.done ? 'Done' : 'Working'));
+      body.appendChild(tr);
+    });
+  }
+
+  function show(result) {
+    data = result;
+    var count = function (s) { return data.rows.filter(function (r) { return r.status === s; }).length; };
+    var stats = $('stats'); stats.textContent = '';
+    [['Total', data.rows.length], ['On site', count('On site')], ['Removed', count('Removed')], ['Waiting', count('Waiting')]].forEach(function (p) {
+      var box = el('div', 'stat'); box.appendChild(el('b', '', p[1])); box.appendChild(document.createTextNode(' ' + p[0])); stats.appendChild(box);
+    });
+    drawRows(); drawItems(); drawCommands();
+    $('live').textContent = 'Live · updated ' + new Date().toLocaleTimeString();
+  }
+
+  function refresh() { google.script.run.withSuccessHandler(show).withFailureHandler(fail).dashData(); }
+
+  $('new-go').onclick = function () {
+    var name = $('new-name').value.trim(), prompt = $('new-prompt').value.trim();
+    if (!name || !prompt) { $('live').textContent = 'A new widget needs a name and a prompt.'; return; }
+    send({ action: 'generate', name: name, prompt: prompt }, null);
+    $('new-name').value = ''; $('new-prompt').value = '';
+  };
+
+  drawFilters();
+  refresh();
+  setInterval(refresh, 5000);
+</script>
+</body>
+</html>
