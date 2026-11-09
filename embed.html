@@ -38,6 +38,17 @@
 
     #bg { position: fixed; inset: 0; width: 100%; height: 100%; z-index: 0; pointer-events: none; opacity: .68; transition: opacity .8s; image-rendering: pixelated; }
     #bg.fade { opacity: 0; }
+    body.saver .page { display: none; }
+    body.saver #bg { opacity: 1; }
+    body.saver #bg.fade { opacity: 0; }
+    .bar { flex-wrap: wrap; }
+    .bar-right { display: inline-flex; flex-wrap: wrap; align-items: center; gap: .4rem .75rem; }
+    .ss-btn { min-height: 1.9rem; padding: .25rem .6rem; border: 1px solid var(--line); border-radius: .35rem; background: var(--paper); color: var(--green); font: inherit; letter-spacing: inherit; text-transform: inherit; cursor: pointer; transition: background .2s, color .2s; }
+    .ss-btn:hover { background: var(--green); color: #fff; }
+    .ss-btn:focus-visible { outline: 3px solid #91aa7f; outline-offset: 2px; }
+    .ss-hint { position: fixed; left: 50%; bottom: 1.5rem; z-index: 3; max-width: calc(100% - 2rem); padding: .5rem .85rem; border-radius: .45rem; background: rgb(31 61 37 / 92%); color: #fff; font-family: var(--mono); font-size: .75rem; text-align: center; opacity: 0; transform: translateX(-50%); pointer-events: none; transition: opacity .3s; }
+    body.saver .ss-hint.on { opacity: 1; }
+    .credit { display: block; font-weight: 650; color: var(--green); }
     .bar, .section-head, .hint, footer { background: rgb(233 237 220 / 90%); border-radius: .5rem; padding: .35rem .6rem; }
     .page { position: relative; z-index: 1; width: min(100%, 72rem); margin: 0 auto; padding: clamp(.9rem, 3vw, 1.75rem) clamp(1rem, 4vw, 2rem) 2.5rem; }
 
@@ -199,7 +210,7 @@
         <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2"/><circle cx="9" cy="10" r="2.4" fill="currentColor"/><circle cx="15.5" cy="14" r="1.7" fill="currentColor"/><circle cx="14.5" cy="7.5" r="1" fill="currentColor"/></svg>
         Mutagen Lab
       </span>
-      <span class="status"><span class="pulse" aria-hidden="true"></span><span id="day-label">Culture live</span></span>
+      <span class="bar-right"><span class="status"><span class="pulse" aria-hidden="true"></span><span id="day-label">Culture live</span></span><button class="ss-btn" id="ss-btn" type="button">Screensaver</button></span>
     </header>
 
     <section class="hero">
@@ -260,10 +271,12 @@
     <p class="hint">Swipe or scroll sideways. New specimens appear on their own.</p>
 
     <footer>
+      <span class="credit">Made by Hudson S</span>
       Made to grow and mutate, one day at a time.
       <small>One small cookie remembers your last visit so new colonies can pop in. No tracking.</small>
     </footer>
   </div>
+  <div class="ss-hint" id="ss-hint" role="status">Click anywhere or press a key to bring the page back</div>
 
   <script>window.MUTAGEN_DATA=[];window.MUTAGEN_WIDGETS={};</script>
   <script>
@@ -1180,6 +1193,28 @@
       if (demo) { render(demoItems(Math.min(60, +demo[1]))); }
       else if (Array.isArray(window.MUTAGEN_DATA)) { render(window.MUTAGEN_DATA); } // Google Sites build: data is baked in
       else { updateTimeline(); load(); setInterval(load, 30000); }
+
+      /* ---- screensaver: hides the page and leaves the background running ---- */
+      var ssBtn = document.getElementById('ss-btn'), ssHint = document.getElementById('ss-hint'), ssTimer;
+      function ssOn() { return document.body.classList.contains('saver'); }
+      function ssShowHint() {
+        ssHint.classList.add('on');
+        clearTimeout(ssTimer);
+        ssTimer = setTimeout(function () { ssHint.classList.remove('on'); }, 2500);
+      }
+      function ssExit() {
+        document.body.classList.remove('saver');
+        ssHint.classList.remove('on');
+        ssBtn.focus({ preventScroll: true });
+      }
+      ssBtn.addEventListener('click', function (e) {
+        e.stopPropagation();
+        document.body.classList.add('saver');
+        ssShowHint();
+      });
+      document.addEventListener('click', function () { if (ssOn()) ssExit(); });
+      document.addEventListener('keydown', function () { if (ssOn()) ssExit(); });
+      document.addEventListener('mousemove', function () { if (ssOn()) ssShowHint(); });
 
       /* ---- carousel controls ---- */
       function step(dir) {
