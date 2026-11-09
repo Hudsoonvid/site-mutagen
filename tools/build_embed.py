@@ -15,13 +15,22 @@ root = pathlib.Path(__file__).resolve().parent.parent
 html = (root / "index.html").read_text(encoding="utf-8")
 items = json.loads((root / "additions.json").read_text(encoding="utf-8"))
 
+# Widgets can run scripts on their own page but cannot reach the network, so they can't be chat rooms.
+LOCK = """<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data: blob:; media-src data: blob:; font-src data:">"""
+
+
+def lock_widget(page):
+    locked, found = re.subn(r"(<head[^>]*>)", lambda m: m.group(1) + LOCK, page, count=1, flags=re.I)
+    return locked if found else LOCK + page
+
+
 widgets = {}
 for item in items:
     path = item.get("widget")
     if isinstance(path, str) and re.fullmatch(r"widgets/[a-z0-9-]+\.html", path):
         file = root / path
         if file.is_file():
-            widgets[path] = file.read_text(encoding="utf-8")
+            widgets[path] = lock_widget(file.read_text(encoding="utf-8"))
 
 
 def to_js(value):

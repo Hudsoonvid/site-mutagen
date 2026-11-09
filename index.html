@@ -55,6 +55,17 @@
     .widget-frame.full { position: fixed; inset: 0; z-index: 50; width: 100vw; height: 100vh; margin: 0; border: 0; border-radius: 0; }
     .tag.holds-full { transform: none !important; animation: none !important; opacity: 1; }
     .full-close { position: fixed; top: .75rem; right: .75rem; z-index: 60; min-height: 2.4rem; padding: .35rem .8rem; border: 0; border-radius: .45rem; background: var(--green-d); color: #fff; font-family: var(--mono); font-size: .75rem; cursor: pointer; }
+    .dash-wrap { position: fixed; inset: 0; z-index: 70; display: flex; flex-direction: column; background: var(--bg); }
+    .dash-bar { display: flex; align-items: center; gap: 1rem; padding: .5rem 1rem; background: var(--green-d); color: #fff; font-family: var(--mono); font-size: .78rem; }
+    .dash-bar span { margin-right: auto; font-weight: 700; }
+    .dash-bar a { color: #d7e8c8; }
+    .dash-bar button { min-height: 2rem; padding: .2rem .8rem; border: 0; border-radius: .35rem; background: #fff; color: var(--green-d); font: inherit; cursor: pointer; }
+    #dash-frame { flex: 1; width: 100%; border: 0; background: var(--bg); }
+    .about { margin-top: 1.6rem; padding: clamp(1.1rem, 3vw, 1.6rem) clamp(1.25rem, 4vw, 2.2rem); background: var(--paper); border: 1px solid var(--line); border-radius: 1.1rem; line-height: 1.6; color: var(--muted); }
+    .about h2 { margin: 0 0 .5rem; font-family: var(--serif); font-size: clamp(1.35rem, 3.4vw, 1.75rem); font-weight: 600; color: var(--green-d); }
+    .about h3 { margin: 1rem 0 .3rem; font-size: .95rem; color: var(--green-d); }
+    .about p { margin: 0; }
+    .about ul { margin: 0; padding-left: 1.2rem; }
     .credit { display: block; font-weight: 650; color: var(--green); }
     .bar, .section-head, .hint, footer { background: rgb(233 237 220 / 90%); border-radius: .5rem; padding: .35rem .6rem; }
     .page { position: relative; z-index: 1; width: min(100%, 72rem); margin: 0 auto; padding: clamp(.9rem, 3vw, 1.75rem) clamp(1rem, 4vw, 2rem) 2.5rem; }
@@ -278,10 +289,28 @@
     </div>
     <p class="hint">Swipe or scroll sideways. New specimens appear on their own.</p>
 
+    <section class="about" aria-label="About this project">
+      <h2>About this project</h2>
+      <p>Mutagen is a student coding and biology project by Hudson S. Classmates suggest small ideas, and approved ones are added to this page. The dish is a simple computer model of how bacteria grow, divide and mutate. The background is a program solving a Minesweeper board using only the clues a player can see.</p>
+      <h3>How requests are handled</h3>
+      <ul>
+        <li>Only people on the class list can have a request added, so nothing is anonymous.</li>
+        <li>An AI screens every request first and removes anything unsafe, unkind or off limits.</li>
+        <li>Only a first name and last initial are shown.</li>
+        <li>Widgets run only on this page and are blocked from connecting to anything outside it.</li>
+      </ul>
+      <h3>Rules</h3>
+      <p>No chat or messaging, nothing that helps with cheating, no personal information, and keep it school-appropriate. Requests that break these are removed. If you see a problem, tell Hudson S and it will be taken down.</p>
+    </section>
+
     <footer>
       <span class="credit">Made by Hudson S</span>
       Made to grow and mutate, one day at a time.
     </footer>
+  </div>
+  <div class="dash-wrap" id="dash-wrap" hidden>
+    <div class="dash-bar"><span>Control room</span><a id="dash-tab" target="_blank" rel="noopener noreferrer">Open in a new tab</a><button id="dash-close" type="button">Close</button></div>
+    <iframe id="dash-frame" title="Control room"></iframe>
   </div>
   <button class="full-close" id="full-close" type="button" hidden>Close full screen</button>
   <div class="ss-hint" id="ss-hint" role="status">Click anywhere or press a key to bring the page back</div>
@@ -1256,7 +1285,16 @@
       fullClose.addEventListener('click', closeFull);
       document.addEventListener('keydown', function (e) { if (e.key === 'Escape') closeFull(); });
 
-      /* ---- hidden door: five quick clicks on the credit. Google only lets the owner in. ---- */
+      /* ---- owner dashboard, shown inside the page. Google only lets the owner's account load it. ---- */
+      var DASH_URL = 'https://script.google.com/a/macros/myfsd.org/s/AKfycbygbk_egWs6IKyGvt3Rh6np3WPLQS8qmweP-pPmxwRPtUh1MbfuCg6Z-WriGg8ScGQVpg/exec?view=dash';
+      var dashWrap = document.getElementById('dash-wrap'), dashFrame = document.getElementById('dash-frame');
+      document.getElementById('dash-tab').href = DASH_URL;
+      function openDash() { dashFrame.src = DASH_URL; dashWrap.hidden = false; }
+      function closeDash() { dashWrap.hidden = true; dashFrame.src = 'about:blank'; }
+      document.getElementById('dash-close').addEventListener('click', closeDash);
+      document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && !dashWrap.hidden) closeDash(); });
+
+      /* ---- hidden door: five quick clicks on the credit ---- */
       var creditClicks = 0, creditTimer;
       document.querySelector('.credit').addEventListener('click', function () {
         creditClicks++;
@@ -1264,7 +1302,7 @@
         creditTimer = setTimeout(function () { creditClicks = 0; }, 1500);
         if (creditClicks >= 5) {
           creditClicks = 0;
-          window.open('https://script.google.com/a/macros/myfsd.org/s/AKfycbygbk_egWs6IKyGvt3Rh6np3WPLQS8qmweP-pPmxwRPtUh1MbfuCg6Z-WriGg8ScGQVpg/exec?view=dash', '_blank', 'noopener');
+          openDash();
         }
       });
 
