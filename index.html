@@ -1046,7 +1046,7 @@
       }
 
       /* ---- specimen cards ---- */
-      var cardByKey = {}, firstLoad = true, allItems = [], viewDay = null, sessionNew = {}, known = {}, demoToday = null;
+      var cardByKey = {}, firstLoad = true, allItems = [], viewDay = null, sessionNew = {}, known = {}, knownAt = {}, demoToday = null;
       var seenBefore = getSeen();
       var firstVisit = seenBefore === null;
       var lastSeen = seenBefore || '0000';
@@ -1202,7 +1202,8 @@
         allItems.forEach(function (it, i) {
           it.__i = i; it.__day = itemDay(it);
           var k = key(it);
-          var isNew = firstLoad ? (!firstVisit && stamp(it) > lastSeen) : !known[k];
+          var isNew = firstLoad ? (!firstVisit && stamp(it) > lastSeen) : !known[k] && !knownAt[it.submittedAt];
+          knownAt[it.submittedAt] = 1;
           if (isNew) { sessionNew[k] = 1; newCount++; }
           known[k] = 1;
         });
@@ -1305,7 +1306,6 @@
       /* ---- live updates: new widgets and colonies appear without a refresh ---- */
       var liveSha = null, livePage = null, liveNoticeShown = false;
       function applyLive(r) {
-        toast('LIVE ' + (r ? (r.items ? 'data ' + r.items.length : 'same') : 'null'), 15000);
         if (!r) return;
         liveSha = r.sha;
         if (!r.items) return;
@@ -1328,12 +1328,12 @@
       }
       function pollLive() {
         if (document.hidden) return;
-        try { google.script.run.withSuccessHandler(applyLive).withFailureHandler(function (e) { toast('LIVE FAIL ' + (e && e.message || e), 19000); }).liveData(liveSha); } catch (e) { toast('LIVE THROW ' + e.message, 19000); }
+        try { google.script.run.withSuccessHandler(applyLive).withFailureHandler(function () {}).liveData(liveSha); } catch (e) {}
       }
       if (Array.isArray(window.MUTAGEN_DATA) && window.google && google.script && google.script.run) {
         setTimeout(pollLive, 3000);
         setInterval(pollLive, 20000);
-      } else { toast('LIVE NO API ' + typeof window.google, 19000); }
+      }
 
       /* ---- About menu ---- */
       var aboutBtn = document.getElementById('about-btn'), aboutPanel = document.getElementById('about-panel');
