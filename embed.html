@@ -190,9 +190,17 @@
     .tag::before { content: ""; position: absolute; inset: 0 0 auto; height: .55rem; border-radius: .9rem .9rem 0 0; background: repeating-linear-gradient(135deg, var(--c) 0 .6rem, color-mix(in srgb, var(--c) 62%, #fff) .6rem 1.2rem); }
     .micro { position: absolute; right: .8rem; top: 1.05rem; width: 2.9rem; height: 2.9rem; border-radius: 50%; border: 2px solid #fff; box-shadow: 0 0 0 1px var(--line), 0 .2rem .5rem rgb(45 60 40 / 18%); }
     .tag:hover { transform: translateY(-6px) rotate(-.7deg); box-shadow: 0 1.3rem 2.4rem rgb(45 60 40 / 18%); }
-    .tag.ping { transform: translateY(-6px); box-shadow: 0 0 0 4px var(--c), 0 1.3rem 2.4rem rgb(45 60 40 / 20%); }
+    .tag.ping { transform: translateY(-6px); box-shadow: 0 0 0 4px var(--c), 0 1.3rem 2.4rem rgb(45 60 40 / 20%); outline: 3px solid var(--c); outline-offset: 4px; }
     .tag.fresh { animation: dealin .7s cubic-bezier(.2,.9,.3,1.15) forwards, halo 1.8s ease-out 3; }
     .tag.has-widget { flex-basis: min(23rem, 88%); }
+    .tag.compact { flex-basis: min(13.5rem, 64%); align-self: flex-start; min-height: 0; gap: .55rem; padding: 1.15rem .85rem .75rem; }
+    .tag.compact .tag-text { margin: .4rem 2.2rem 0 0; font-size: 1.02rem; }
+    .tag.compact .micro { top: .85rem; right: .6rem; width: 2rem; height: 2rem; }
+    .tag.compact .requested-by { padding: .16rem .42rem; font-size: .64rem; }
+    .tag.locates { cursor: pointer; }
+    .locate-btn { display: inline-flex; align-items: center; min-height: 1.6rem; margin-top: .25rem; padding: 0; border: 0; background: none; color: var(--green); font-family: var(--mono); font-size: .7rem; font-weight: 700; cursor: pointer; text-underline-offset: .2em; }
+    .tag.locates:hover .locate-btn { text-decoration: underline; }
+    .locate-btn:focus-visible { outline: 3px solid #91aa7f; outline-offset: 2px; border-radius: .2rem; }
     .tag-head { display: flex; align-items: center; gap: .5rem; font-family: var(--mono); font-size: .72rem; letter-spacing: .1em; color: var(--muted); }
     .tag-head::before { content: ""; width: .6rem; height: .6rem; border-radius: 50%; background: var(--c); box-shadow: 0 0 0 2px color-mix(in srgb, var(--c) 30%, #fff); }
     .newbadge { padding: .08rem .38rem; border-radius: .25rem; background: var(--green); color: #fff; font-size: .62rem; font-weight: 700; }
@@ -212,6 +220,17 @@
     .nav.prev { left: -.6rem; } .nav.next { right: -.6rem; }
     .hint { margin: 0 .15rem; font-family: var(--mono); font-size: .7rem; color: var(--faint); }
     footer { margin-top: 2.6rem; text-align: center; color: var(--faint); font-size: .82rem; line-height: 1.6; }
+
+    /* the pointer a card uses to show where its change lives on the page */
+    .spot-ring { position: fixed; left: 0; top: 0; z-index: 45; border: 3px solid #9be8a7; box-shadow: 0 0 0 100vmax rgb(12 22 14 / 42%); pointer-events: none; animation: fade .25s both; }
+    .spot-ring::after { content: ""; position: absolute; inset: -3px; border: 3px solid #9be8a7; border-radius: inherit; animation: spotpulse 1.3s ease-out infinite; }
+    .spot-tip { position: fixed; left: 0; top: 0; z-index: 46; display: flex; flex-direction: column; align-items: center; gap: .2rem; pointer-events: none; animation: fade .25s both; }
+    .spot-tip.above { flex-direction: column-reverse; }
+    .spot-arrow { width: 2.5rem; height: 2.5rem; color: #9be8a7; filter: drop-shadow(0 .15rem .3rem rgb(0 0 0 / 45%)); animation: spotbob .7s ease-in-out infinite alternate; }
+    .spot-tip.above .spot-arrow { rotate: 180deg; }
+    .spot-label { padding: .4rem .75rem; border-radius: .45rem; background: #1f3d25; color: #fff; font-family: var(--mono); font-size: .78rem; font-weight: 700; white-space: nowrap; box-shadow: 0 .4rem 1rem rgb(0 0 0 / 30%); }
+    @keyframes spotpulse { from { opacity: .9; transform: none; } to { opacity: 0; transform: scale(1.12); } }
+    @keyframes spotbob { from { transform: translateY(.45rem); } to { transform: translateY(-.1rem); } }
 
     @keyframes fade { from { opacity: 0; } to { opacity: 1; } }
     @keyframes rise { from { opacity: 0; transform: translateY(1.4rem); } to { opacity: 1; transform: none; } }
@@ -340,6 +359,11 @@
     <iframe id="dash-frame" title="Control room"></iframe>
   </div>
   <button class="full-close" id="full-close" type="button" hidden>Close full screen</button>
+  <div class="spot-ring" id="spot-ring" hidden></div>
+  <div class="spot-tip" id="spot-tip" role="status" hidden>
+    <svg class="spot-arrow" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2l9 10h-5.5v10h-7V12H3z" fill="currentColor" stroke="#10190f" stroke-width="1" stroke-linejoin="round"/></svg>
+    <span class="spot-label" id="spot-label"></span>
+  </div>
   <div class="ss-pick" id="ss-pick" role="group" aria-label="Choose a background">
     <button type="button" data-bg="" class="on">Today's pick</button>
     <button type="button" data-bg="mines">Minesweeper</button>
@@ -347,7 +371,7 @@
   </div>
   <div class="ss-hint" id="ss-hint" role="status">Click anywhere else or press a key to bring the page back</div>
 
-  <script>window.MUTAGEN_DATA=[{"text": "Drawing tablet", "requestedBy": "Hudson S.", "submittedAt": "2026-11-08T20:16:19", "addedAt": "2026-11-08T20:17:05", "widget": "widgets/drawing-tablet.html"}, {"text": "Game where you create genome structures for the color of skin", "prompt": "Game where you create genome structures for the color of skin by using building blocks such as A, G, T, etc. Then, once you make your DNA strand it shows you what skin color you made", "requestedBy": "Harrison S.", "submittedAt": "2026-11-08T20:31:20", "addedAt": "2026-11-08T21:03:30", "widget": "widgets/genome-skin.html"}, {"text": "Add dark mode", "requestedBy": "Hudson S.", "submittedAt": "2026-11-09T06:43:10", "addedAt": "2026-11-09T06:43:54"}];window.MUTAGEN_WIDGETS={"widgets/drawing-tablet.html": "\u003c!DOCTYPE html>\n\u003chtml>\u003chead>\u003cmeta http-equiv=\"Content-Security-Policy\" content=\"default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data: blob:; media-src data: blob:; font-src data:\">\u003cmeta charset=\"utf-8\">\u003cmeta name=\"viewport\" content=\"width=device-width,initial-scale=1\">\n\u003cstyle>\nhtml,body{margin:0;height:100%;background:#f4efdc;font-family:system-ui,sans-serif;overflow:hidden}\n#w{display:flex;flex-direction:column;height:100%;box-sizing:border-box;padding:6px;gap:6px}\n#bar{display:flex;gap:6px;align-items:center}\nbutton{font:inherit;font-size:12px;border:1px solid #5b7a3a;background:#e6efd0;color:#2f4a1c;border-radius:6px;padding:3px 8px;cursor:pointer}\nbutton:focus-visible{outline:2px solid #2f4a1c}\n.sw{width:18px;height:18px;padding:0;border-radius:50%;border:2px solid #f4efdc;box-shadow:0 0 0 1px #5b7a3a}\n.sw.on{box-shadow:0 0 0 2px #2f4a1c}\ninput[type=range]{width:60px;accent-color:#5b7a3a}\n#c{flex:1;min-height:0;width:100%;background:#fffdf3;border:2px solid #5b7a3a;border-radius:8px;touch-action:none;cursor:crosshair}\n\u003c/style>\u003c/head>\u003cbody>\n\u003cdiv id=\"w\">\u003cdiv id=\"bar\">\n\u003cbutton class=\"sw on\" data-c=\"#2f4a1c\" style=\"background:#2f4a1c\" aria-label=\"Moss\">\u003c/button>\n\u003cbutton class=\"sw\" data-c=\"#8a5a2b\" style=\"background:#8a5a2b\" aria-label=\"Brown\">\u003c/button>\n\u003cbutton class=\"sw\" data-c=\"#b23a2e\" style=\"background:#b23a2e\" aria-label=\"Red\">\u003c/button>\n\u003cbutton class=\"sw\" data-c=\"#fffdf3\" style=\"background:#fffdf3\" aria-label=\"Eraser\">\u003c/button>\n\u003cinput id=\"s\" type=\"range\" min=\"1\" max=\"14\" value=\"3\" aria-label=\"Brush size\">\n\u003cbutton id=\"x\">Clear\u003c/button>\u003c/div>\n\u003ccanvas id=\"c\">\u003c/canvas>\u003c/div>\n\u003cscript>\nconst c=document.getElementById('c'),g=c.getContext('2d');let col='#2f4a1c',d=false,lx,ly;\nfunction fit(){const r=c.getBoundingClientRect(),old=document.createElement('canvas');old.width=c.width;old.height=c.height;old.getContext('2d').drawImage(c,0,0);c.width=r.width;c.height=r.height;g.fillStyle='#fffdf3';g.fillRect(0,0,c.width,c.height);g.drawImage(old,0,0,c.width,c.height);g.lineCap='round';g.lineJoin='round'}\nfit();addEventListener('resize',fit);\nfunction p(e){const r=c.getBoundingClientRect();return[e.clientX-r.left,e.clientY-r.top]}\nc.addEventListener('pointerdown',e=>{d=true;c.setPointerCapture(e.pointerId);[lx,ly]=p(e);line(lx,ly)});\nc.addEventListener('pointermove',e=>{if(!d)return;const[x,y]=p(e);line(x,y)});\n['pointerup','pointercancel'].forEach(t=>c.addEventListener(t,()=>d=false));\nfunction line(x,y){g.strokeStyle=col;g.lineWidth=+document.getElementById('s').value;g.beginPath();g.moveTo(lx,ly);g.lineTo(x+.01,y);g.stroke();lx=x;ly=y}\ndocument.querySelectorAll('.sw').forEach(b=>b.onclick=()=>{col=b.dataset.c;document.querySelectorAll('.sw').forEach(o=>o.classList.remove('on'));b.classList.add('on')});\ndocument.getElementById('x').onclick=()=>{g.fillStyle='#fffdf3';g.fillRect(0,0,c.width,c.height)};\n\u003c/script>\u003c/body>\u003c/html>\n", "widgets/genome-skin.html": "\u003c!DOCTYPE html>\n\u003chtml lang=\"en\">\u003chead>\u003cmeta http-equiv=\"Content-Security-Policy\" content=\"default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data: blob:; media-src data: blob:; font-src data:\">\u003cmeta charset=\"utf-8\">\u003cmeta name=\"viewport\" content=\"width=device-width,initial-scale=1\">\n\u003cstyle>\nhtml,body{margin:0;height:100%;background:#f4efdc;color:#2f4a1c;font-family:system-ui,sans-serif;overflow:hidden}\n#w{position:relative;display:flex;flex-direction:column;gap:6px;height:100%;box-sizing:border-box;padding:7px}\n#bases{display:flex;flex-wrap:wrap;align-items:center;gap:5px}\nbutton{font:inherit;font-size:12px;font-weight:650;min-height:28px;padding:3px 9px;border:1px solid #5b7a3a;border-radius:6px;background:#e6efd0;color:#2f4a1c;cursor:pointer}\nbutton:hover{background:#d6e4b6}\nbutton:focus-visible{outline:2px solid #2f4a1c;outline-offset:1px}\nbutton:disabled{opacity:.45;cursor:default}\n.b{width:32px;padding:3px 0;color:#fff;border-color:transparent}\n.A,.A:hover{background:#3f7d9c}.T,.T:hover{background:#b0822e}.G,.G:hover{background:#4d8a4a}.C,.C:hover{background:#b0507a}\n#done{margin-left:auto;background:#2d5233;color:#fff;border-color:#2d5233}\n#strand{flex:1;min-height:0;overflow:auto;display:flex;flex-wrap:wrap;align-content:flex-start;gap:3px;padding:6px;background:#fffdf3;border:2px solid #5b7a3a;border-radius:8px}\n.t{display:flex;align-items:center;justify-content:center;width:clamp(19px,5vmin,44px);height:clamp(19px,5vmin,44px);border-radius:5px;color:#fff;font-size:clamp(11px,2.6vmin,22px);font-weight:700}\n#hint{margin:auto;color:#7d8872;font-size:13px;text-align:center}\n#result{position:absolute;inset:0;display:none;flex-direction:column;align-items:center;justify-content:center;gap:6px;padding:10px;box-sizing:border-box;background:#f4efdc;text-align:center}\n#result.on{display:flex}\n#swatch{width:clamp(70px,34vmin,260px);height:clamp(70px,34vmin,260px);border-radius:50%;border:3px solid #fffdf3;box-shadow:0 2px 9px rgb(45 60 40 / 35%)}\n#label{font-size:clamp(13px,3.2vmin,24px);font-weight:700}\nsmall{color:#5b6058;font-size:clamp(10px,2.2vmin,15px)}\n\u003c/style>\u003c/head>\u003cbody>\n\u003cdiv id=\"w\">\n  \u003cdiv id=\"bases\">\n    \u003cbutton class=\"b A\" data-b=\"A\" aria-label=\"Add A\">A\u003c/button>\n    \u003cbutton class=\"b T\" data-b=\"T\" aria-label=\"Add T\">T\u003c/button>\n    \u003cbutton class=\"b G\" data-b=\"G\" aria-label=\"Add G\">G\u003c/button>\n    \u003cbutton class=\"b C\" data-b=\"C\" aria-label=\"Add C\">C\u003c/button>\n    \u003cbutton id=\"undo\">Undo\u003c/button>\n    \u003cbutton id=\"clear\">Clear\u003c/button>\n    \u003cbutton id=\"done\" disabled>Finish\u003c/button>\n  \u003c/div>\n  \u003cdiv id=\"strand\" aria-live=\"polite\">\u003cdiv id=\"hint\">Add at least 6 blocks to build a DNA strand\u003c/div>\u003c/div>\n  \u003cdiv id=\"result\" role=\"status\">\n    \u003cdiv id=\"swatch\">\u003c/div>\n    \u003cdiv id=\"label\">\u003c/div>\n    \u003csmall>Just a game. Real skin color comes from many genes working together.\u003c/small>\n    \u003cbutton id=\"again\">Build another\u003c/button>\n  \u003c/div>\n\u003c/div>\n\u003cscript>\nvar strand=[],MIN=6,MAX=40,el=document.getElementById('strand'),hint=document.getElementById('hint'),done=document.getElementById('done'),result=document.getElementById('result');\nvar BASE={A:.14,T:.36,G:.68,C:.94};\nvar TONES=[[248,224,202],[229,186,150],[192,139,102],[138,90,60],[92,58,38],[58,36,24]];\nfunction draw(){\n  el.textContent='';\n  if(!strand.length)el.appendChild(hint);\n  strand.forEach(function(b){var t=document.createElement('div');t.className='t '+b;t.textContent=b;el.appendChild(t)});\n  el.scrollTop=el.scrollHeight;\n  done.disabled=strand.length\u003cMIN;\n}\nfunction level(){\n  var sum=0,turn=0;\n  strand.forEach(function(b,i){sum+=BASE[b];turn+=BASE[b]*Math.sin(i*1.7)});\n  return Math.max(0,Math.min(1,sum/strand.length+turn/strand.length*.22));\n}\nfunction tone(p){\n  var at=p*(TONES.length-1),i=Math.min(TONES.length-2,Math.floor(at)),f=at-i;\n  return 'rgb('+TONES[i].map(function(v,c){return Math.round(v+(TONES[i+1][c]-v)*f)}).join(',')+')';\n}\ndocument.querySelectorAll('.b').forEach(function(b){b.onclick=function(){if(strand.length\u003cMAX){strand.push(b.dataset.b);draw()}}});\ndocument.getElementById('undo').onclick=function(){strand.pop();draw()};\ndocument.getElementById('clear').onclick=function(){strand=[];draw()};\ndone.onclick=function(){\n  var p=level();\n  document.getElementById('swatch').style.background=tone(p);\n  document.getElementById('label').textContent='Your strand made this shade. Melanin level: '+Math.round(p*100)+'%';\n  result.classList.add('on');\n  document.getElementById('again').focus();\n};\ndocument.getElementById('again').onclick=function(){result.classList.remove('on');strand=[];draw()};\n\u003c/script>\n\u003c/body>\u003c/html>\n"};window.MUTAGEN_STATUS={};</script>
+  <script>window.MUTAGEN_DATA=[{"text": "Drawing tablet", "requestedBy": "Hudson S.", "submittedAt": "2026-11-08T20:16:19", "addedAt": "2026-11-08T20:17:05", "widget": "widgets/drawing-tablet.html"}, {"text": "Game where you create genome structures for the color of skin", "prompt": "Game where you create genome structures for the color of skin by using building blocks such as A, G, T, etc. Then, once you make your DNA strand it shows you what skin color you made", "requestedBy": "Harrison S.", "submittedAt": "2026-11-08T20:31:20", "addedAt": "2026-11-08T21:03:30", "widget": "widgets/genome-skin.html"}, {"text": "Add dark mode", "requestedBy": "Hudson S.", "submittedAt": "2026-11-09T06:43:10", "addedAt": "2026-11-09T06:43:54", "pointsTo": "dark-btn"}];window.MUTAGEN_WIDGETS={"widgets/drawing-tablet.html": "\u003c!DOCTYPE html>\n\u003chtml>\u003chead>\u003cmeta http-equiv=\"Content-Security-Policy\" content=\"default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data: blob:; media-src data: blob:; font-src data:\">\u003cmeta charset=\"utf-8\">\u003cmeta name=\"viewport\" content=\"width=device-width,initial-scale=1\">\n\u003cstyle>\nhtml,body{margin:0;height:100%;background:#f4efdc;font-family:system-ui,sans-serif;overflow:hidden}\n#w{display:flex;flex-direction:column;height:100%;box-sizing:border-box;padding:6px;gap:6px}\n#bar{display:flex;gap:6px;align-items:center}\nbutton{font:inherit;font-size:12px;border:1px solid #5b7a3a;background:#e6efd0;color:#2f4a1c;border-radius:6px;padding:3px 8px;cursor:pointer}\nbutton:focus-visible{outline:2px solid #2f4a1c}\n.sw{width:18px;height:18px;padding:0;border-radius:50%;border:2px solid #f4efdc;box-shadow:0 0 0 1px #5b7a3a}\n.sw.on{box-shadow:0 0 0 2px #2f4a1c}\ninput[type=range]{width:60px;accent-color:#5b7a3a}\n#c{flex:1;min-height:0;width:100%;background:#fffdf3;border:2px solid #5b7a3a;border-radius:8px;touch-action:none;cursor:crosshair}\n\u003c/style>\u003c/head>\u003cbody>\n\u003cdiv id=\"w\">\u003cdiv id=\"bar\">\n\u003cbutton class=\"sw on\" data-c=\"#2f4a1c\" style=\"background:#2f4a1c\" aria-label=\"Moss\">\u003c/button>\n\u003cbutton class=\"sw\" data-c=\"#8a5a2b\" style=\"background:#8a5a2b\" aria-label=\"Brown\">\u003c/button>\n\u003cbutton class=\"sw\" data-c=\"#b23a2e\" style=\"background:#b23a2e\" aria-label=\"Red\">\u003c/button>\n\u003cbutton class=\"sw\" data-c=\"#fffdf3\" style=\"background:#fffdf3\" aria-label=\"Eraser\">\u003c/button>\n\u003cinput id=\"s\" type=\"range\" min=\"1\" max=\"14\" value=\"3\" aria-label=\"Brush size\">\n\u003cbutton id=\"x\">Clear\u003c/button>\u003c/div>\n\u003ccanvas id=\"c\">\u003c/canvas>\u003c/div>\n\u003cscript>\nconst c=document.getElementById('c'),g=c.getContext('2d');let col='#2f4a1c',d=false,lx,ly;\nfunction fit(){const r=c.getBoundingClientRect(),old=document.createElement('canvas');old.width=c.width;old.height=c.height;old.getContext('2d').drawImage(c,0,0);c.width=r.width;c.height=r.height;g.fillStyle='#fffdf3';g.fillRect(0,0,c.width,c.height);g.drawImage(old,0,0,c.width,c.height);g.lineCap='round';g.lineJoin='round'}\nfit();addEventListener('resize',fit);\nfunction p(e){const r=c.getBoundingClientRect();return[e.clientX-r.left,e.clientY-r.top]}\nc.addEventListener('pointerdown',e=>{d=true;c.setPointerCapture(e.pointerId);[lx,ly]=p(e);line(lx,ly)});\nc.addEventListener('pointermove',e=>{if(!d)return;const[x,y]=p(e);line(x,y)});\n['pointerup','pointercancel'].forEach(t=>c.addEventListener(t,()=>d=false));\nfunction line(x,y){g.strokeStyle=col;g.lineWidth=+document.getElementById('s').value;g.beginPath();g.moveTo(lx,ly);g.lineTo(x+.01,y);g.stroke();lx=x;ly=y}\ndocument.querySelectorAll('.sw').forEach(b=>b.onclick=()=>{col=b.dataset.c;document.querySelectorAll('.sw').forEach(o=>o.classList.remove('on'));b.classList.add('on')});\ndocument.getElementById('x').onclick=()=>{g.fillStyle='#fffdf3';g.fillRect(0,0,c.width,c.height)};\n\u003c/script>\u003c/body>\u003c/html>\n", "widgets/genome-skin.html": "\u003c!DOCTYPE html>\n\u003chtml lang=\"en\">\u003chead>\u003cmeta http-equiv=\"Content-Security-Policy\" content=\"default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data: blob:; media-src data: blob:; font-src data:\">\u003cmeta charset=\"utf-8\">\u003cmeta name=\"viewport\" content=\"width=device-width,initial-scale=1\">\n\u003cstyle>\nhtml,body{margin:0;height:100%;background:#f4efdc;color:#2f4a1c;font-family:system-ui,sans-serif;overflow:hidden}\n#w{position:relative;display:flex;flex-direction:column;gap:6px;height:100%;box-sizing:border-box;padding:7px}\n#bases{display:flex;flex-wrap:wrap;align-items:center;gap:5px}\nbutton{font:inherit;font-size:12px;font-weight:650;min-height:28px;padding:3px 9px;border:1px solid #5b7a3a;border-radius:6px;background:#e6efd0;color:#2f4a1c;cursor:pointer}\nbutton:hover{background:#d6e4b6}\nbutton:focus-visible{outline:2px solid #2f4a1c;outline-offset:1px}\nbutton:disabled{opacity:.45;cursor:default}\n.b{width:32px;padding:3px 0;color:#fff;border-color:transparent}\n.A,.A:hover{background:#3f7d9c}.T,.T:hover{background:#b0822e}.G,.G:hover{background:#4d8a4a}.C,.C:hover{background:#b0507a}\n#done{margin-left:auto;background:#2d5233;color:#fff;border-color:#2d5233}\n#strand{flex:1;min-height:0;overflow:auto;display:flex;flex-wrap:wrap;align-content:flex-start;gap:3px;padding:6px;background:#fffdf3;border:2px solid #5b7a3a;border-radius:8px}\n.t{display:flex;align-items:center;justify-content:center;width:clamp(19px,5vmin,44px);height:clamp(19px,5vmin,44px);border-radius:5px;color:#fff;font-size:clamp(11px,2.6vmin,22px);font-weight:700}\n#hint{margin:auto;color:#7d8872;font-size:13px;text-align:center}\n#result{position:absolute;inset:0;display:none;flex-direction:column;align-items:center;justify-content:center;gap:6px;padding:10px;box-sizing:border-box;background:#f4efdc;text-align:center}\n#result.on{display:flex}\n#swatch{width:clamp(70px,34vmin,260px);height:clamp(70px,34vmin,260px);border-radius:50%;border:3px solid #fffdf3;box-shadow:0 2px 9px rgb(45 60 40 / 35%)}\n#label{font-size:clamp(13px,3.2vmin,24px);font-weight:700}\nsmall{color:#5b6058;font-size:clamp(10px,2.2vmin,15px)}\n\u003c/style>\u003c/head>\u003cbody>\n\u003cdiv id=\"w\">\n  \u003cdiv id=\"bases\">\n    \u003cbutton class=\"b A\" data-b=\"A\" aria-label=\"Add A\">A\u003c/button>\n    \u003cbutton class=\"b T\" data-b=\"T\" aria-label=\"Add T\">T\u003c/button>\n    \u003cbutton class=\"b G\" data-b=\"G\" aria-label=\"Add G\">G\u003c/button>\n    \u003cbutton class=\"b C\" data-b=\"C\" aria-label=\"Add C\">C\u003c/button>\n    \u003cbutton id=\"undo\">Undo\u003c/button>\n    \u003cbutton id=\"clear\">Clear\u003c/button>\n    \u003cbutton id=\"done\" disabled>Finish\u003c/button>\n  \u003c/div>\n  \u003cdiv id=\"strand\" aria-live=\"polite\">\u003cdiv id=\"hint\">Add at least 6 blocks to build a DNA strand\u003c/div>\u003c/div>\n  \u003cdiv id=\"result\" role=\"status\">\n    \u003cdiv id=\"swatch\">\u003c/div>\n    \u003cdiv id=\"label\">\u003c/div>\n    \u003csmall>Just a game. Real skin color comes from many genes working together.\u003c/small>\n    \u003cbutton id=\"again\">Build another\u003c/button>\n  \u003c/div>\n\u003c/div>\n\u003cscript>\nvar strand=[],MIN=6,MAX=40,el=document.getElementById('strand'),hint=document.getElementById('hint'),done=document.getElementById('done'),result=document.getElementById('result');\nvar BASE={A:.14,T:.36,G:.68,C:.94};\nvar TONES=[[248,224,202],[229,186,150],[192,139,102],[138,90,60],[92,58,38],[58,36,24]];\nfunction draw(){\n  el.textContent='';\n  if(!strand.length)el.appendChild(hint);\n  strand.forEach(function(b){var t=document.createElement('div');t.className='t '+b;t.textContent=b;el.appendChild(t)});\n  el.scrollTop=el.scrollHeight;\n  done.disabled=strand.length\u003cMIN;\n}\nfunction level(){\n  var sum=0,turn=0;\n  strand.forEach(function(b,i){sum+=BASE[b];turn+=BASE[b]*Math.sin(i*1.7)});\n  return Math.max(0,Math.min(1,sum/strand.length+turn/strand.length*.22));\n}\nfunction tone(p){\n  var at=p*(TONES.length-1),i=Math.min(TONES.length-2,Math.floor(at)),f=at-i;\n  return 'rgb('+TONES[i].map(function(v,c){return Math.round(v+(TONES[i+1][c]-v)*f)}).join(',')+')';\n}\ndocument.querySelectorAll('.b').forEach(function(b){b.onclick=function(){if(strand.length\u003cMAX){strand.push(b.dataset.b);draw()}}});\ndocument.getElementById('undo').onclick=function(){strand.pop();draw()};\ndocument.getElementById('clear').onclick=function(){strand=[];draw()};\ndone.onclick=function(){\n  var p=level();\n  document.getElementById('swatch').style.background=tone(p);\n  document.getElementById('label').textContent='Your strand made this shade. Melanin level: '+Math.round(p*100)+'%';\n  result.classList.add('on');\n  document.getElementById('again').focus();\n};\ndocument.getElementById('again').onclick=function(){result.classList.remove('on');strand=[];draw()};\n\u003c/script>\n\u003c/body>\u003c/html>\n"};window.MUTAGEN_STATUS={};</script>
   <script>
     (function () {
       'use strict';
@@ -1140,9 +1164,10 @@
         showTip(k, e);
         var li = cardByKey[k.key];
         if (li) {
-          li.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', inline: 'center', block: 'nearest' });
+          holdUntil = Date.now() + 9000; // keeps the carousel still so the card doesn't slide away
+          li.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', inline: 'center', block: 'center' });
           li.classList.add('ping');
-          setTimeout(function () { li.classList.remove('ping'); }, 1600);
+          setTimeout(function () { li.classList.remove('ping'); }, 2600);
         }
       });
 
@@ -1205,6 +1230,18 @@
           expand.setAttribute('aria-label', 'Open ' + it.text + ' full screen');
           expand.addEventListener('click', function () { openFull(fr); });
           top.appendChild(expand);
+        } else {
+          li.classList.add('compact');
+          if (typeof it.pointsTo === 'string' && it.pointsTo) {
+            li.classList.add('locates');
+            var show = document.createElement('button');
+            show.type = 'button';
+            show.className = 'locate-btn';
+            show.textContent = 'Show on page';
+            show.setAttribute('aria-label', 'Show where ' + it.text + ' is on the page');
+            top.appendChild(show);
+            li.addEventListener('click', function (e) { if (!e.target.closest('.requested-by')) locate(it, li); });
+          }
         }
 
         var by = document.createElement('span');
@@ -1417,6 +1454,40 @@
       fullClose.addEventListener('click', closeFull);
       document.addEventListener('keydown', function (e) { if (e.key === 'Escape') closeFull(); });
 
+      /* ---- a card for a site change scrolls to the real thing and points at it ---- */
+      var spotRing = document.getElementById('spot-ring'), spotTip = document.getElementById('spot-tip'), spotLabel = document.getElementById('spot-label'), spotRun = 0;
+      function spotHide() { spotRun++; spotRing.hidden = spotTip.hidden = true; }
+      function spotPlace(el) {
+        var r = el.getBoundingClientRect(), vw = document.documentElement.clientWidth, vh = window.innerHeight, gap = 6;
+        spotRing.style.transform = 'translate(' + (r.left - gap) + 'px,' + (r.top - gap) + 'px)';
+        spotRing.style.width = r.width + gap * 2 + 'px';
+        spotRing.style.height = r.height + gap * 2 + 'px';
+        var w = spotTip.offsetWidth, h = spotTip.offsetHeight, below = r.bottom + gap + h + 8 <= vh || r.top - gap - h - 8 < 0;
+        spotTip.classList.toggle('above', !below);
+        spotTip.style.transform = 'translate(' + clamp(r.left + r.width / 2 - w / 2, 8, Math.max(8, vw - w - 8)) + 'px,' + (below ? r.bottom + gap + 8 : r.top - gap - h - 8) + 'px)';
+      }
+      function pointAt(el, label) {
+        var run = ++spotRun, start = performance.now();
+        spotLabel.textContent = label;
+        spotRing.style.borderRadius = getComputedStyle(el).borderRadius;
+        spotRing.hidden = spotTip.hidden = false;
+        el.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'center', inline: 'nearest' });
+        el.focus({ preventScroll: true });
+        (function follow(now) {
+          if (run !== spotRun) return;
+          if (now - start > 5000) { spotHide(); return; }
+          spotPlace(el);
+          requestAnimationFrame(follow);
+        })(start);
+      }
+      function locate(it, li) {
+        var el = document.getElementById(it.pointsTo);
+        if (el && el.getClientRects().length) pointAt(el, 'Here it is');
+        else pointAt(li, 'Refresh the page to see this');
+      }
+      document.addEventListener('pointerdown', function (e) { if (!spotRing.hidden && !e.target.closest('.tag.locates')) spotHide(); });
+      document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && !spotRing.hidden) spotHide(); });
+
       /* ---- owner dashboard, shown inside the page. Google only lets the owner's account load it. ---- */
       var DASH_URL = 'https://script.google.com/a/macros/myfsd.org/s/AKfycbygbk_egWs6IKyGvt3Rh6np3WPLQS8qmweP-pPmxwRPtUh1MbfuCg6Z-WriGg8ScGQVpg/exec?view=dash';
       var dashWrap = document.getElementById('dash-wrap'), dashFrame = document.getElementById('dash-frame');
@@ -1533,12 +1604,12 @@
       document.getElementById('prev').onclick = function () { step(-1); };
       document.getElementById('next').onclick = function () { step(1); };
 
-      var paused = false;
+      var paused = false, holdUntil = 0;
       ['mouseenter', 'focusin', 'touchstart'].forEach(function (e) { grid.addEventListener(e, function () { paused = true; }, { passive: true }); });
       ['mouseleave', 'focusout'].forEach(function (e) { grid.addEventListener(e, function () { paused = false; }); });
       if (!reduce) {
         setInterval(function () {
-          if (paused || grid.scrollWidth <= grid.clientWidth + 4) return;
+          if (paused || Date.now() < holdUntil || grid.scrollWidth <= grid.clientWidth + 4) return;
           if (grid.scrollLeft + grid.clientWidth >= grid.scrollWidth - 4) grid.scrollTo({ left: 0, behavior: 'smooth' });
           else step(1);
         }, 4000);

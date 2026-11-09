@@ -190,9 +190,17 @@
     .tag::before { content: ""; position: absolute; inset: 0 0 auto; height: .55rem; border-radius: .9rem .9rem 0 0; background: repeating-linear-gradient(135deg, var(--c) 0 .6rem, color-mix(in srgb, var(--c) 62%, #fff) .6rem 1.2rem); }
     .micro { position: absolute; right: .8rem; top: 1.05rem; width: 2.9rem; height: 2.9rem; border-radius: 50%; border: 2px solid #fff; box-shadow: 0 0 0 1px var(--line), 0 .2rem .5rem rgb(45 60 40 / 18%); }
     .tag:hover { transform: translateY(-6px) rotate(-.7deg); box-shadow: 0 1.3rem 2.4rem rgb(45 60 40 / 18%); }
-    .tag.ping { transform: translateY(-6px); box-shadow: 0 0 0 4px var(--c), 0 1.3rem 2.4rem rgb(45 60 40 / 20%); }
+    .tag.ping { transform: translateY(-6px); box-shadow: 0 0 0 4px var(--c), 0 1.3rem 2.4rem rgb(45 60 40 / 20%); outline: 3px solid var(--c); outline-offset: 4px; }
     .tag.fresh { animation: dealin .7s cubic-bezier(.2,.9,.3,1.15) forwards, halo 1.8s ease-out 3; }
     .tag.has-widget { flex-basis: min(23rem, 88%); }
+    .tag.compact { flex-basis: min(13.5rem, 64%); align-self: flex-start; min-height: 0; gap: .55rem; padding: 1.15rem .85rem .75rem; }
+    .tag.compact .tag-text { margin: .4rem 2.2rem 0 0; font-size: 1.02rem; }
+    .tag.compact .micro { top: .85rem; right: .6rem; width: 2rem; height: 2rem; }
+    .tag.compact .requested-by { padding: .16rem .42rem; font-size: .64rem; }
+    .tag.locates { cursor: pointer; }
+    .locate-btn { display: inline-flex; align-items: center; min-height: 1.6rem; margin-top: .25rem; padding: 0; border: 0; background: none; color: var(--green); font-family: var(--mono); font-size: .7rem; font-weight: 700; cursor: pointer; text-underline-offset: .2em; }
+    .tag.locates:hover .locate-btn { text-decoration: underline; }
+    .locate-btn:focus-visible { outline: 3px solid #91aa7f; outline-offset: 2px; border-radius: .2rem; }
     .tag-head { display: flex; align-items: center; gap: .5rem; font-family: var(--mono); font-size: .72rem; letter-spacing: .1em; color: var(--muted); }
     .tag-head::before { content: ""; width: .6rem; height: .6rem; border-radius: 50%; background: var(--c); box-shadow: 0 0 0 2px color-mix(in srgb, var(--c) 30%, #fff); }
     .newbadge { padding: .08rem .38rem; border-radius: .25rem; background: var(--green); color: #fff; font-size: .62rem; font-weight: 700; }
@@ -212,6 +220,17 @@
     .nav.prev { left: -.6rem; } .nav.next { right: -.6rem; }
     .hint { margin: 0 .15rem; font-family: var(--mono); font-size: .7rem; color: var(--faint); }
     footer { margin-top: 2.6rem; text-align: center; color: var(--faint); font-size: .82rem; line-height: 1.6; }
+
+    /* the pointer a card uses to show where its change lives on the page */
+    .spot-ring { position: fixed; left: 0; top: 0; z-index: 45; border: 3px solid #9be8a7; box-shadow: 0 0 0 100vmax rgb(12 22 14 / 42%); pointer-events: none; animation: fade .25s both; }
+    .spot-ring::after { content: ""; position: absolute; inset: -3px; border: 3px solid #9be8a7; border-radius: inherit; animation: spotpulse 1.3s ease-out infinite; }
+    .spot-tip { position: fixed; left: 0; top: 0; z-index: 46; display: flex; flex-direction: column; align-items: center; gap: .2rem; pointer-events: none; animation: fade .25s both; }
+    .spot-tip.above { flex-direction: column-reverse; }
+    .spot-arrow { width: 2.5rem; height: 2.5rem; color: #9be8a7; filter: drop-shadow(0 .15rem .3rem rgb(0 0 0 / 45%)); animation: spotbob .7s ease-in-out infinite alternate; }
+    .spot-tip.above .spot-arrow { rotate: 180deg; }
+    .spot-label { padding: .4rem .75rem; border-radius: .45rem; background: #1f3d25; color: #fff; font-family: var(--mono); font-size: .78rem; font-weight: 700; white-space: nowrap; box-shadow: 0 .4rem 1rem rgb(0 0 0 / 30%); }
+    @keyframes spotpulse { from { opacity: .9; transform: none; } to { opacity: 0; transform: scale(1.12); } }
+    @keyframes spotbob { from { transform: translateY(.45rem); } to { transform: translateY(-.1rem); } }
 
     @keyframes fade { from { opacity: 0; } to { opacity: 1; } }
     @keyframes rise { from { opacity: 0; transform: translateY(1.4rem); } to { opacity: 1; transform: none; } }
@@ -340,6 +359,11 @@
     <iframe id="dash-frame" title="Control room"></iframe>
   </div>
   <button class="full-close" id="full-close" type="button" hidden>Close full screen</button>
+  <div class="spot-ring" id="spot-ring" hidden></div>
+  <div class="spot-tip" id="spot-tip" role="status" hidden>
+    <svg class="spot-arrow" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2l9 10h-5.5v10h-7V12H3z" fill="currentColor" stroke="#10190f" stroke-width="1" stroke-linejoin="round"/></svg>
+    <span class="spot-label" id="spot-label"></span>
+  </div>
   <div class="ss-pick" id="ss-pick" role="group" aria-label="Choose a background">
     <button type="button" data-bg="" class="on">Today's pick</button>
     <button type="button" data-bg="mines">Minesweeper</button>
@@ -1139,9 +1163,10 @@
         showTip(k, e);
         var li = cardByKey[k.key];
         if (li) {
-          li.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', inline: 'center', block: 'nearest' });
+          holdUntil = Date.now() + 9000; // keeps the carousel still so the card doesn't slide away
+          li.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', inline: 'center', block: 'center' });
           li.classList.add('ping');
-          setTimeout(function () { li.classList.remove('ping'); }, 1600);
+          setTimeout(function () { li.classList.remove('ping'); }, 2600);
         }
       });
 
@@ -1204,6 +1229,18 @@
           expand.setAttribute('aria-label', 'Open ' + it.text + ' full screen');
           expand.addEventListener('click', function () { openFull(fr); });
           top.appendChild(expand);
+        } else {
+          li.classList.add('compact');
+          if (typeof it.pointsTo === 'string' && it.pointsTo) {
+            li.classList.add('locates');
+            var show = document.createElement('button');
+            show.type = 'button';
+            show.className = 'locate-btn';
+            show.textContent = 'Show on page';
+            show.setAttribute('aria-label', 'Show where ' + it.text + ' is on the page');
+            top.appendChild(show);
+            li.addEventListener('click', function (e) { if (!e.target.closest('.requested-by')) locate(it, li); });
+          }
         }
 
         var by = document.createElement('span');
@@ -1416,6 +1453,40 @@
       fullClose.addEventListener('click', closeFull);
       document.addEventListener('keydown', function (e) { if (e.key === 'Escape') closeFull(); });
 
+      /* ---- a card for a site change scrolls to the real thing and points at it ---- */
+      var spotRing = document.getElementById('spot-ring'), spotTip = document.getElementById('spot-tip'), spotLabel = document.getElementById('spot-label'), spotRun = 0;
+      function spotHide() { spotRun++; spotRing.hidden = spotTip.hidden = true; }
+      function spotPlace(el) {
+        var r = el.getBoundingClientRect(), vw = document.documentElement.clientWidth, vh = window.innerHeight, gap = 6;
+        spotRing.style.transform = 'translate(' + (r.left - gap) + 'px,' + (r.top - gap) + 'px)';
+        spotRing.style.width = r.width + gap * 2 + 'px';
+        spotRing.style.height = r.height + gap * 2 + 'px';
+        var w = spotTip.offsetWidth, h = spotTip.offsetHeight, below = r.bottom + gap + h + 8 <= vh || r.top - gap - h - 8 < 0;
+        spotTip.classList.toggle('above', !below);
+        spotTip.style.transform = 'translate(' + clamp(r.left + r.width / 2 - w / 2, 8, Math.max(8, vw - w - 8)) + 'px,' + (below ? r.bottom + gap + 8 : r.top - gap - h - 8) + 'px)';
+      }
+      function pointAt(el, label) {
+        var run = ++spotRun, start = performance.now();
+        spotLabel.textContent = label;
+        spotRing.style.borderRadius = getComputedStyle(el).borderRadius;
+        spotRing.hidden = spotTip.hidden = false;
+        el.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'center', inline: 'nearest' });
+        el.focus({ preventScroll: true });
+        (function follow(now) {
+          if (run !== spotRun) return;
+          if (now - start > 5000) { spotHide(); return; }
+          spotPlace(el);
+          requestAnimationFrame(follow);
+        })(start);
+      }
+      function locate(it, li) {
+        var el = document.getElementById(it.pointsTo);
+        if (el && el.getClientRects().length) pointAt(el, 'Here it is');
+        else pointAt(li, 'Refresh the page to see this');
+      }
+      document.addEventListener('pointerdown', function (e) { if (!spotRing.hidden && !e.target.closest('.tag.locates')) spotHide(); });
+      document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && !spotRing.hidden) spotHide(); });
+
       /* ---- owner dashboard, shown inside the page. Google only lets the owner's account load it. ---- */
       var DASH_URL = 'https://script.google.com/a/macros/myfsd.org/s/AKfycbygbk_egWs6IKyGvt3Rh6np3WPLQS8qmweP-pPmxwRPtUh1MbfuCg6Z-WriGg8ScGQVpg/exec?view=dash';
       var dashWrap = document.getElementById('dash-wrap'), dashFrame = document.getElementById('dash-frame');
@@ -1532,12 +1603,12 @@
       document.getElementById('prev').onclick = function () { step(-1); };
       document.getElementById('next').onclick = function () { step(1); };
 
-      var paused = false;
+      var paused = false, holdUntil = 0;
       ['mouseenter', 'focusin', 'touchstart'].forEach(function (e) { grid.addEventListener(e, function () { paused = true; }, { passive: true }); });
       ['mouseleave', 'focusout'].forEach(function (e) { grid.addEventListener(e, function () { paused = false; }); });
       if (!reduce) {
         setInterval(function () {
-          if (paused || grid.scrollWidth <= grid.clientWidth + 4) return;
+          if (paused || Date.now() < holdUntil || grid.scrollWidth <= grid.clientWidth + 4) return;
           if (grid.scrollLeft + grid.clientWidth >= grid.scrollWidth - 4) grid.scrollTo({ left: 0, behavior: 'smooth' });
           else step(1);
         }, 4000);
