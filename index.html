@@ -594,7 +594,7 @@
           .catch(function () {});
       }
 
-      if (demo) { firstVisit = true; render(demoItems(Math.min(60, +demo[1]))); }
+      if (demo) { render(demoItems(Math.min(60, +demo[1]))); }
       else { load(); setInterval(load, 30000); }
 
       /* ---- carousel controls ---- */
