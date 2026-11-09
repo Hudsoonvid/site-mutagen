@@ -36,7 +36,7 @@
       background-attachment: fixed;
     }
 
-    #bg { position: fixed; inset: 0; width: 100%; height: 100%; z-index: 0; pointer-events: none; opacity: .68; transition: opacity .8s; }
+    #bg { position: fixed; inset: 0; width: 100%; height: 100%; z-index: 0; pointer-events: none; opacity: .68; transition: opacity .8s; image-rendering: pixelated; }
     #bg.fade { opacity: 0; }
     .bar, .section-head, .hint, footer { background: rgb(233 237 220 / 90%); border-radius: .5rem; padding: .35rem .6rem; }
     .page { position: relative; z-index: 1; width: min(100%, 72rem); margin: 0 auto; padding: clamp(.9rem, 3vw, 1.75rem) clamp(1rem, 4vw, 2rem) 2.5rem; }
@@ -381,12 +381,22 @@
          The solver only sees what a player sees: numbers, flags and the mine count.
          Only msReveal knows where the mines are. Sometimes the solver has to guess,
          and if it hits a mine the game is lost and a new one starts. */
-      var MS_CELL = 16, MS_DENSITY = .16, MS_HIDDEN = -1, MS_FLAG = -2, MS_BOOM = -3;
-      var MS_NUM = ['', '#2f66a8', '#3a8748', '#c23f36', '#27407e', '#86332f', '#2c8585', '#2b2b2b', '#6f6f6f'];
+      var MS_DENSITY = .16, MS_HIDDEN = -1, MS_FLAG = -2, MS_BOOM = -3, MS_MAX_CELLS = 260000;
+      function msColor(r, g, b) { return ((255 << 24) | (b << 16) | (g << 8) | r) >>> 0; }
+      var MS_TILE = [msColor(212, 218, 194), msColor(214, 220, 196), msColor(217, 223, 199)];
+      var MS_MINE = msColor(52, 48, 34), MS_RED = msColor(216, 72, 60), MS_GROW = [];
+      (function () {
+        for (var i = 0; i <= 40; i++) {
+          var t = i / 40;
+          MS_GROW.push(msColor(Math.round(240 + 6 * t), Math.round(222 - 34 * t), Math.round(142 - 112 * t)));
+        }
+      })();
       var ms = null;
 
       function msNew() {
-        var cols = Math.ceil(window.innerWidth / MS_CELL) + 1, rows = Math.ceil(window.innerHeight / MS_CELL) + 5, n = cols * rows;
+        var w = window.innerWidth, h = window.innerHeight;
+        var size = Math.max(2, Math.ceil(Math.sqrt(w * h / MS_MAX_CELLS)));
+        var cols = Math.ceil(w / size), rows = Math.ceil(h / size), n = cols * rows;
         var nb = ms && ms.cols === cols && ms.rows === rows ? ms.nb : null;
         if (!nb) {
           nb = new Int32Array(n * 9);
@@ -398,9 +408,26 @@
             nb[i * 9] = count;
           }
         }
-        ms = { cols: cols, rows: rows, n: n, nb: nb, view: new Int8Array(n).fill(MS_HIDDEN), mine: null, mines: Math.round(n * MS_DENSITY), flags: 0, open: 0, born: new Float64Array(n), mark: new Int32Array(n), stamp: 0, bloom: [], todo: [], active: [], fresh: [], scan: 0, moved: false, over: 0, endAt: 0, wiping: false };
+        bgCv.width = cols;
+        bgCv.height = rows;
+        var img = bgCtx.createImageData(cols, rows);
+        ms = { cols: cols, rows: rows, aspect: w / h, n: n, nb: nb, img: img, px: new Uint32Array(img.data.buffer), view: new Int8Array(n).fill(MS_HIDDEN), filled: new Uint8Array(n), mine: null, mines: Math.round(n * MS_DENSITY), flags: 0, open: 0, born: new Float64Array(n), mark: new Int32Array(n), stamp: 0, bloom: [], todo: [], active: [], fresh: [], scan: 0, moved: false, quota: Math.round(clamp(n / 1100, 5, 260)), over: 0, endAt: 0, wiping: false };
         msPaintAll();
         msReveal(Math.floor(Math.random() * rows * .6 + rows * .2) * cols + Math.floor(Math.random() * cols * .6 + cols * .2));
+      }
+
+      /* A flag with no hidden squares left around it gets filled in with the growth. */
+      function msFillCheck(i, now) {
+        var g = ms, o = i * 9;
+        if (g.view[i] !== MS_FLAG || g.filled[i]) return;
+        for (var j = 1; j <= g.nb[o]; j++) if (g.view[g.nb[o + j]] === MS_HIDDEN) return;
+        g.filled[i] = 1;
+        g.born[i] = now;
+        g.fresh.push(i);
+      }
+      function msSettle(i, now) {
+        var g = ms, o = i * 9;
+        for (var j = 1; j <= g.nb[o]; j++) msFillCheck(g.nb[o + j], now);
       }
 
       function msPlace(first) {
@@ -437,6 +464,7 @@
         g.born[i] = performance.now();
         g.fresh.push(i);
         msPaint(i, g.born[i]);
+        msSettle(i, g.born[i]);
         if (count === 0) { for (j = 1; j <= g.nb[o]; j++) g.bloom.push(g.nb[o + j]); }
         else g.active.push(i);
         if (g.open === g.n - g.mines) msEnd(2);
@@ -448,7 +476,10 @@
         g.view[i] = MS_FLAG;
         g.flags++;
         g.moved = true;
-        msPaint(i, performance.now());
+        var now = performance.now();
+        msPaint(i, now);
+        msFillCheck(i, now);
+        msSettle(i, now);
       }
 
       /* Rule 1: a number already satisfied opens the rest; a number that needs every hidden neighbor flags them. */
@@ -507,10 +538,11 @@
           for (i = 0; i < g.n; i++) if (g.view[i] === MS_HIDDEN) { if (left <= 0) g.todo.push(i); else msFlag(i); }
           return;
         }
-        g.active.forEach(function (c) {
-          var need = msHiddenOf(c, list);
-          list.forEach(function (cell) { risk.set(cell, Math.max(risk.get(cell) || 0, need / list.length)); });
-        });
+        var stride = Math.max(1, Math.floor(g.active.length / 3000));
+        for (i = 0; i < g.active.length; i += stride) {
+          var need = msHiddenOf(g.active[i], list);
+          for (var c = 0; c < list.length; c++) risk.set(list[c], Math.max(risk.get(list[c]) || 0, need / list.length));
+        }
         var best = -1, bestP = 2;
         risk.forEach(function (chance, cell) {
           var score = chance + Math.random() * .001;
@@ -528,7 +560,7 @@
       function msThink() {
         var g = ms, tries = 0, k;
         g.moved = false;
-        while (g.todo.length < 18 && g.active.length && tries++ < 500) {
+        while (g.todo.length < g.quota * 2 && g.active.length && tries++ < g.quota * 40) {
           k = Math.floor(Math.random() * g.active.length);
           if (msBasic(g.active[k])) { g.active[k] = g.active[g.active.length - 1]; g.active.pop(); }
         }
@@ -548,7 +580,7 @@
       }
 
       function msStep() {
-        var g = ms, now = performance.now(), quota = clamp(Math.round(g.n / 900), 5, 14), did = 0, cell;
+        var g = ms, now = performance.now(), quota = g.quota, did = 0, cell;
         if (g.over) {
           if (g.wiping || now - g.endAt < (g.over === 1 ? 3500 : 8000)) return;
           g.wiping = true;
@@ -557,43 +589,25 @@
           return;
         }
         while (did < quota && g.bloom.length && !g.over) { cell = msTake(g.bloom); if (g.view[cell] === MS_HIDDEN) { msReveal(cell); did++; } }
-        if (!g.bloom.length && !g.over) msThink();
+        if (g.bloom.length < quota && !g.over) msThink();
         while (did < quota && g.todo.length && !g.over) { cell = msTake(g.todo); if (g.view[cell] === MS_HIDDEN) { msReveal(cell); did++; } }
-        if (g.over) return;
-        bgCtx.font = '700 11px ui-monospace, Consolas, monospace';
-        bgCtx.textAlign = 'center'; bgCtx.textBaseline = 'middle';
-        g.fresh = g.fresh.filter(function (i) { msPaint(i, now); return now - g.born[i] < 2400; });
+        if (!g.over) g.fresh = g.fresh.filter(function (i) { msPaint(i, now); return now - g.born[i] < 2400; });
+        bgCtx.putImageData(g.img, 0, 0);
       }
 
+      /* No numbers or flag icons: unsolved squares look hidden, solved ones are growth. */
       function msPaint(i, now) {
-        var g = ms, c = bgCtx, S2 = MS_CELL, col = i % g.cols, x = col * S2, y = (i - col) / g.cols * S2, v = g.view[i];
-        var showMine = g.over && g.mine && g.mine[i] && v !== MS_FLAG;
-        if (v === MS_HIDDEN || v === MS_FLAG) {
-          c.fillStyle = '#d6dcc4'; c.fillRect(x, y, S2, S2);
-          c.fillStyle = '#ecefdf'; c.fillRect(x, y, S2, 1); c.fillRect(x, y, 1, S2);
-          c.fillStyle = '#b9c1a3'; c.fillRect(x, y + S2 - 1, S2, 1); c.fillRect(x + S2 - 1, y, 1, S2);
-          if (v === MS_FLAG) {
-            c.fillStyle = '#3a3a2c'; c.fillRect(x + 7, y + 3, 1.5, 10);
-            c.fillStyle = '#c23f36'; c.beginPath(); c.moveTo(x + 8.5, y + 3); c.lineTo(x + 13, y + 5.5); c.lineTo(x + 8.5, y + 8); c.fill();
-          }
-        } else {
-          var t = v === MS_BOOM ? 0 : clamp(1 - (now - g.born[i]) / 2400, 0, 1);
-          c.fillStyle = v === MS_BOOM ? '#d8483c' : 'rgb(' + Math.round(244 - 8 * t) + ',' + Math.round(233 - 40 * t) + ',' + Math.round(180 - 130 * t) + ')';
-          c.fillRect(x, y, S2, S2);
-          c.fillStyle = 'rgba(130,112,40,.25)'; c.fillRect(x, y + S2 - 1, S2, 1); c.fillRect(x + S2 - 1, y, 1, S2);
-          if (v > 0) { c.fillStyle = MS_NUM[v]; c.fillText(v, x + S2 / 2, y + S2 / 2 + .5); }
-        }
-        if (showMine || v === MS_BOOM) {
-          c.fillStyle = '#2b2a22';
-          c.beginPath(); c.arc(x + S2 / 2, y + S2 / 2, 4, 0, 6.2832); c.fill();
-        }
+        var g = ms, v = g.view[i];
+        if (v === MS_BOOM) g.px[i] = MS_RED;
+        else if (g.over && g.mine && g.mine[i] && !g.filled[i]) g.px[i] = MS_MINE;
+        else if (v >= 0 || g.filled[i]) g.px[i] = MS_GROW[Math.round(clamp(1 - (now - g.born[i]) / 2400, 0, 1) * 40)];
+        else g.px[i] = MS_TILE[((i * 2654435761) >>> 0) % 3];
       }
 
       function msPaintAll() {
         var now = performance.now();
-        bgCtx.font = '700 11px ui-monospace, Consolas, monospace';
-        bgCtx.textAlign = 'center'; bgCtx.textBaseline = 'middle';
         for (var i = 0; i < ms.n; i++) msPaint(i, now);
+        bgCtx.putImageData(ms.img, 0, 0);
       }
 
       function capFor(R) { return Math.round(clamp(.5 * (R / W) * (R / W), 24, 520)); }
@@ -635,12 +649,7 @@
       }
 
       function resizeBg() {
-        var d = Math.min(window.devicePixelRatio || 1, 2);
-        bgCv.width = Math.round(window.innerWidth * d);
-        bgCv.height = Math.round(window.innerHeight * d);
-        bgCtx.setTransform(d, 0, 0, d, 0, 0);
-        if (!ms || Math.ceil(window.innerWidth / MS_CELL) + 1 > ms.cols || Math.ceil(window.innerHeight / MS_CELL) + 1 > ms.rows) msNew();
-        else msPaintAll();
+        if (!ms || Math.abs(window.innerWidth / window.innerHeight - ms.aspect) / ms.aspect > .3) msNew();
         if (reduce) {
           var stop = performance.now() + 400;
           while (!ms.over && performance.now() < stop) msStep();
