@@ -1306,6 +1306,7 @@
       /* ---- live updates: new widgets and colonies appear without a refresh ---- */
       var liveSha = null, livePage = null, liveNoticeShown = false;
       function applyLive(r) {
+        toast('LIVE ' + (r ? (r.items ? 'data ' + r.items.length : 'same') : 'null'), 15000);
         if (!r) return;
         liveSha = r.sha;
         if (!r.items) return;
@@ -1328,12 +1329,12 @@
       }
       function pollLive() {
         if (document.hidden) return;
-        try { google.script.run.withSuccessHandler(applyLive).withFailureHandler(function () {}).liveData(liveSha); } catch (e) {}
+        try { google.script.run.withSuccessHandler(applyLive).withFailureHandler(function (e) { toast('LIVE FAIL ' + (e && e.message || e), 19000); }).liveData(liveSha); } catch (e) { toast('LIVE THROW ' + e.message, 19000); }
       }
       if (Array.isArray(window.MUTAGEN_DATA) && window.google && google.script && google.script.run) {
         setTimeout(pollLive, 3000);
         setInterval(pollLive, 20000);
-      }
+      } else { toast('LIVE NO API ' + typeof window.google, 19000); }
 
       /* ---- About menu ---- */
       var aboutBtn = document.getElementById('about-btn'), aboutPanel = document.getElementById('about-panel');
