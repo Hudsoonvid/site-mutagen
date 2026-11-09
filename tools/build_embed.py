@@ -47,6 +47,8 @@ if node:
         if checked.returncode != 0:
             raise SystemExit(f"Not publishing: script {number} in index.html has an error:\n{checked.stderr[-800:]}")
 
-data = f"<script>window.MUTAGEN_DATA={to_js(items)};window.MUTAGEN_WIDGETS={to_js(widgets)};</script>\n  "
+status_file = root / "status.json"
+status = json.loads(status_file.read_text(encoding="utf-8")) if status_file.is_file() else {}
+data = f"<script>window.MUTAGEN_DATA={to_js(items)};window.MUTAGEN_WIDGETS={to_js(widgets)};window.MUTAGEN_STATUS={to_js(status)};</script>\n  "
 (root / "embed.html").write_text(html.replace(marker, data + marker), encoding="utf-8", newline="\n")
 print(f"embed.html: {len(items)} additions, {len(widgets)} widgets")

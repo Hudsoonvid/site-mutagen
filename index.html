@@ -48,6 +48,7 @@
     .ss-btn:focus-visible { outline: 3px solid #91aa7f; outline-offset: 2px; }
     .ss-hint { position: fixed; left: 50%; bottom: 1.5rem; z-index: 3; max-width: calc(100% - 2rem); padding: .5rem .85rem; border-radius: .45rem; background: rgb(31 61 37 / 92%); color: #fff; font-family: var(--mono); font-size: .75rem; text-align: center; opacity: 0; transform: translateX(-50%); pointer-events: none; transition: opacity .3s; }
     body.saver .ss-hint.on { opacity: 1; }
+    .limit-note { margin: 0 0 clamp(.8rem, 2vw, 1.1rem); padding: .7rem 1rem; border: 1px solid #d9b96a; border-radius: .6rem; background: #fff6dc; color: #5c4512; font-size: .92rem; line-height: 1.45; }
     .credit { display: block; font-weight: 650; color: var(--green); }
     .bar, .section-head, .hint, footer { background: rgb(233 237 220 / 90%); border-radius: .5rem; padding: .35rem .6rem; }
     .page { position: relative; z-index: 1; width: min(100%, 72rem); margin: 0 auto; padding: clamp(.9rem, 3vw, 1.75rem) clamp(1rem, 4vw, 2rem) 2.5rem; }
@@ -211,6 +212,8 @@
       </span>
       <span class="bar-right"><span class="status"><span class="pulse" aria-hidden="true"></span><span id="day-label">Culture live</span></span><button class="ss-btn" id="ss-btn" type="button">Screensaver</button></span>
     </header>
+
+    <div class="limit-note" id="limit-note" role="status" hidden></div>
 
     <section class="hero">
       <div>
@@ -1187,9 +1190,34 @@
           .catch(function () {});
       }
 
-      if (demo) { render(demoItems(Math.min(60, +demo[1]))); }
-      else if (Array.isArray(window.MUTAGEN_DATA)) { render(window.MUTAGEN_DATA); } // Google Sites build: data is baked in
-      else { updateTimeline(); load(); setInterval(load, 30000); }
+      if (demo) {
+        render(demoItems(Math.min(60, +demo[1])));
+        if (/[?&]limit=1/.test(location.search)) applyStatus({ limited: true, resetAt: new Date(Date.now() + 3 * 3600000).toISOString() });
+      }
+      else if (Array.isArray(window.MUTAGEN_DATA)) { render(window.MUTAGEN_DATA); applyStatus(window.MUTAGEN_STATUS); } // Google Sites build: data is baked in
+      else {
+        updateTimeline(); load(); setInterval(load, 30000);
+        fetch('status.json', { cache: 'no-store' }).then(function (r) { return r.ok ? r.json() : null; }).then(applyStatus).catch(function () {});
+      }
+
+      /* ---- notice shown while the AI that builds requests is out of usage ---- */
+      var statusTimer;
+      function applyStatus(st) {
+        var note = document.getElementById('limit-note');
+        function show() {
+          var at = st && st.limited && st.resetAt ? new Date(st.resetAt) : null;
+          var known = at && !isNaN(at.getTime());
+          var active = !!st && st.limited === true && (!known || Date.now() < at.getTime() + 600000);
+          note.hidden = !active;
+          if (!active) return;
+          note.textContent = 'The AI that builds requests has reached its usage limit, so new requests are on hold' +
+            (known ? ' until about ' + at.toLocaleString(undefined, { weekday: 'short', hour: 'numeric', minute: '2-digit' }) : ' until the limit resets') +
+            '. Anything you send now will be added after that.';
+        }
+        show();
+        clearInterval(statusTimer);
+        statusTimer = setInterval(show, 60000);
+      }
 
       /* ---- screensaver: hides the page and leaves the background running ---- */
       var ssBtn = document.getElementById('ss-btn'), ssHint = document.getElementById('ss-hint'), ssTimer;
