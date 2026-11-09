@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#f6f5f1">
+  <meta name="theme-color" content="#e9f0dd">
   <title>Mutagen — a little something, every day</title>
   <style>
     :root {
@@ -11,11 +11,11 @@
       font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
       --ink: #20231f;
       --muted: #5b6058;
-      --line: #deded5;
-      --paper: #fffefa;
-      --bg: #f6f5f1;
-      --green: #344b36;
-      --green-d: #263b29;
+      --line: #cfd9c2;
+      --paper: #fbfdf6;
+      --bg: #e9f0dd;
+      --green: #2d5233;
+      --green-d: #1f3d25;
       color: var(--ink);
       background: var(--bg);
     }
@@ -24,10 +24,11 @@
     body { margin: 0; min-height: 100vh; background: var(--bg); overflow-x: hidden; position: relative; }
 
     .blobs { position: fixed; inset: 0; z-index: 0; pointer-events: none; overflow: hidden; }
-    .blob { position: absolute; border-radius: 50%; filter: blur(70px); opacity: .45; animation: drift 22s ease-in-out infinite alternate; }
-    .b1 { width: 28rem; height: 28rem; background: #cfe3c4; top: -8rem; left: -6rem; }
-    .b2 { width: 24rem; height: 24rem; background: #f3dcb8; top: 30%; right: -8rem; animation-duration: 28s; animation-delay: -6s; }
-    .b3 { width: 26rem; height: 26rem; background: #c9dbe6; bottom: -10rem; left: 20%; animation-duration: 25s; animation-delay: -12s; }
+    .blob { position: absolute; border-radius: 42% 58% 63% 37% / 41% 44% 56% 59%; filter: blur(60px); opacity: .55; animation: drift 22s ease-in-out infinite alternate, morph 14s ease-in-out infinite; }
+    .b1 { width: 30rem; height: 30rem; background: #b9dba0; top: -8rem; left: -6rem; }
+    .b2 { width: 24rem; height: 24rem; background: #e8e0a8; top: 30%; right: -8rem; animation-duration: 28s; animation-delay: -6s; }
+    .b3 { width: 26rem; height: 26rem; background: #a9d8c4; bottom: -10rem; left: 20%; animation-duration: 25s; animation-delay: -12s; }
+    @keyframes morph { 0%,100% { border-radius: 42% 58% 63% 37% / 41% 44% 56% 59%; } 33% { border-radius: 63% 37% 41% 59% / 55% 62% 38% 45%; } 66% { border-radius: 38% 62% 52% 48% / 62% 36% 64% 38%; } }
     @keyframes drift { from { transform: translate(0,0) scale(1); } to { transform: translate(4rem,3rem) scale(1.15); } }
 
     .page { position: relative; z-index: 1; width: min(100%, 68rem); margin: 0 auto; padding: clamp(1.25rem, 5vw, 3.5rem) clamp(1rem, 4vw, 2rem) 3rem; }
@@ -35,7 +36,7 @@
     .hero {
       padding: clamp(2rem, 7vw, 4.5rem);
       border: 1px solid var(--line); border-radius: 1.75rem;
-      background: rgb(255 254 250 / 80%); backdrop-filter: blur(10px);
+      background: rgb(251 253 246 / 78%); backdrop-filter: blur(10px);
       box-shadow: 0 1.5rem 4rem rgb(32 35 31 / 7%);
       animation: rise .8s cubic-bezier(.2,.8,.2,1) both;
     }
@@ -104,6 +105,34 @@
     .empty { padding: 2rem; text-align: center; color: #858980; border: 1px dashed var(--line); border-radius: 1.25rem; }
     footer { margin-top: 3.5rem; text-align: center; color: #858980; font-size: .85rem; }
 
+
+    /* spores */
+    .spores { position: fixed; inset: 0; z-index: 0; pointer-events: none; overflow: hidden; }
+    .spore { position: absolute; bottom: -2rem; left: var(--x); width: var(--s); height: var(--s); border-radius: 50%; background: radial-gradient(circle at 35% 30%, #fff, #b9dba0 55%, rgb(120 170 90 / 0%) 70%); opacity: 0; animation: floatup var(--d) linear infinite; animation-delay: var(--w); }
+    @keyframes floatup { 0% { transform: translate(0,0); opacity: 0; } 10% { opacity: .8; } 50% { transform: translate(1.5rem,-50vh); } 100% { transform: translate(-1rem,-105vh); opacity: 0; } }
+
+    /* DNA strand */
+    .hero { position: relative; overflow: hidden; }
+    .dna { position: absolute; right: clamp(1rem, 6vw, 4.5rem); top: 50%; transform: translateY(-50%); width: 6.5rem; height: 78%; display: flex; flex-direction: column; justify-content: space-between; pointer-events: none; }
+    .rung { position: relative; height: .7rem; }
+    .rung::before, .rung::after { content: ""; position: absolute; top: 0; width: .7rem; height: .7rem; border-radius: 50%; animation: strandA 3.2s ease-in-out infinite; animation-delay: calc(var(--k) * -.22s); }
+    .rung::before { left: 0; background: #4f8f4f; }
+    .rung::after { right: 0; background: #d7a93f; animation-name: strandB; }
+    .rung i { position: absolute; top: .3rem; left: .5rem; right: .5rem; height: 2px; background: linear-gradient(90deg, #4f8f4f, #d7a93f); opacity: .35; animation: rungw 3.2s ease-in-out infinite; animation-delay: calc(var(--k) * -.22s); }
+    @keyframes strandA { 0%,100% { transform: translateX(0) scale(1); } 50% { transform: translateX(5.8rem) scale(.55); } }
+    @keyframes strandB { 0%,100% { transform: translateX(0) scale(.55); } 50% { transform: translateX(-5.8rem) scale(1); } }
+    @keyframes rungw { 0%,100% { transform: scaleX(1); opacity: .4; } 50% { transform: scaleX(.05); opacity: .05; } }
+    @media (max-width: 760px) { .dna { opacity: .25; right: .5rem; } }
+
+    /* organic, cell-like widgets */
+    .widget { border-radius: 2.4rem 1.2rem 2.6rem 1.4rem / 1.6rem 2.4rem 1.4rem 2.6rem; animation: pop .6s cubic-bezier(.2,.9,.3,1.2) forwards, cellmorph 9s ease-in-out infinite; animation-delay: calc(var(--i) * 70ms + 250ms), calc(var(--i) * -1.3s); background-image: radial-gradient(circle at 85% 18%, rgb(255 255 255 / 70%) 0 .55rem, transparent .6rem), radial-gradient(circle at 78% 30%, rgb(255 255 255 / 45%) 0 .3rem, transparent .35rem), linear-gradient(160deg, var(--tint), var(--paper) 62%); }
+    @keyframes cellmorph { 0%,100% { border-radius: 2.4rem 1.2rem 2.6rem 1.4rem / 1.6rem 2.4rem 1.4rem 2.6rem; } 50% { border-radius: 1.3rem 2.6rem 1.4rem 2.5rem / 2.5rem 1.4rem 2.6rem 1.5rem; } }
+    .widget::before { border-radius: 1rem; }
+    .widget:nth-child(4n+2) { --accent: #b99a2e; --tint: #f2f0cf; }
+    .widget:nth-child(4n+3) { --accent: #3f9a86; --tint: #d8efe4; }
+    .widget:nth-child(4n)   { --accent: #7a9b3a; --tint: #e6f0c8; }
+    .hero { border-radius: 2.6rem 1.6rem 2.8rem 1.8rem / 1.8rem 2.6rem 1.6rem 2.8rem; }
+
     @keyframes rise { from { opacity: 0; transform: translateY(1.5rem); } to { opacity: 1; transform: none; } }
     @keyframes pop { from { opacity: 0; transform: translateY(1.5rem) scale(.9); } to { opacity: 1; transform: none; } }
     @keyframes glow { 0% { box-shadow: 0 0 0 0 var(--accent); } 100% { box-shadow: 0 0 0 1.2rem transparent; } }
@@ -115,10 +144,12 @@
   </style>
 </head>
 <body>
+  <div class="spores" id="spores" aria-hidden="true"></div>
   <div class="blobs" aria-hidden="true"><div class="blob b1"></div><div class="blob b2"></div><div class="blob b3"></div></div>
   <div class="page">
     <section class="hero">
-      <p class="eyebrow"><span class="pulse" aria-hidden="true"></span>A small thing, refreshed daily</p>
+      <div class="dna" id="dna" aria-hidden="true"></div>
+      <p class="eyebrow"><span class="pulse" aria-hidden="true"></span>Growing and mutating daily</p>
       <h1>Welcome to Mutagen.</h1>
       <p class="intro">Something new is taking shape here. Have an idea for what we should add next? Send in a request and help us make this site a little better every day.</p>
       <a class="request-link" href="https://forms.gle/joeZed9KM3tsd2Td8" target="_blank" rel="noopener noreferrer">
@@ -134,11 +165,14 @@
     </div>
     <p class="hint">Swipe or scroll sideways — new widgets appear automatically.</p>
 
-    <footer>Made to grow, one day at a time.</footer>
+    <footer>Made to grow and mutate, one day at a time.</footer>
   </div>
 
   <script>
     (function () {
+      var dna = document.getElementById('dna'), sp = document.getElementById('spores');
+      for (var k = 0; k < 14; k++) { var r = document.createElement('div'); r.className = 'rung'; r.style.setProperty('--k', k); r.innerHTML = '<i></i>'; dna.appendChild(r); }
+      for (var j = 0; j < 16; j++) { var d = document.createElement('span'); d.className = 'spore'; d.style.cssText = '--x:' + (Math.random() * 100).toFixed(1) + '%;--s:' + (.5 + Math.random() * 1.1).toFixed(2) + 'rem;--d:' + (14 + Math.random() * 16).toFixed(1) + 's;--w:-' + (Math.random() * 20).toFixed(1) + 's'; sp.appendChild(d); }
       var grid = document.getElementById('additions');
       var count = document.getElementById('count');
       var seen = {};
