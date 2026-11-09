@@ -75,6 +75,23 @@
     .request-link:focus-visible { outline: 3px solid #91aa7f; outline-offset: 4px; }
     .arrow { font-size: 1.2em; }
 
+
+    .additions { margin: 2.5rem 0 0; padding: 0; list-style: none; border-top: 1px solid #deded5; }
+    .additions:empty { display: none; }
+    .addition { padding: 1.1rem 0; border-bottom: 1px solid #deded5; }
+    .addition-text { margin: 0; font-size: 1.1rem; line-height: 1.5; overflow-wrap: anywhere; }
+    .requested-by { position: relative; display: inline-block; margin-top: .35rem; color: #858980; font-size: .85rem; cursor: help; }
+    .requested-by:focus-visible { outline: 3px solid #91aa7f; outline-offset: 3px; border-radius: .25rem; }
+    .requested-by::after {
+      content: attr(data-name);
+      position: absolute; left: 0; bottom: calc(100% + .4rem);
+      padding: .35rem .65rem; border-radius: .5rem;
+      background: #344b36; color: #fff; font-size: .8rem; font-weight: 650; white-space: nowrap;
+      opacity: 0; pointer-events: none; transform: translateY(4px);
+      transition: opacity .15s ease, transform .15s ease;
+    }
+    .requested-by:hover::after, .requested-by:focus::after { opacity: 1; transform: none; }
+
     footer {
       margin-top: 3rem;
       color: #858980;
@@ -94,7 +111,24 @@
     <a class="request-link" href="https://forms.gle/joeZed9KM3tsd2Td8" target="_blank" rel="noopener noreferrer">
       Request a new addition <span class="arrow" aria-hidden="true">↗</span>
     </a>
+    <ul class="additions" id="additions" aria-label="Additions"></ul>
     <footer>Made to grow, one day at a time.</footer>
   </main>
+  <script>
+    fetch('additions.json', { cache: 'no-cache' })
+      .then(function (r) { return r.json(); })
+      .then(function (items) {
+        var list = document.getElementById('additions');
+        items.slice().reverse().forEach(function (it) {
+          var li = document.createElement('li'); li.className = 'addition';
+          var p = document.createElement('p'); p.className = 'addition-text'; p.textContent = it.text;
+          var by = document.createElement('span'); by.className = 'requested-by'; by.tabIndex = 0;
+          by.setAttribute('data-name', it.requestedBy);
+          by.textContent = 'requested by ' + it.requestedBy;
+          li.appendChild(p); li.appendChild(by); list.appendChild(li);
+        });
+      })
+      .catch(function () {});
+  </script>
 </body>
 </html>
