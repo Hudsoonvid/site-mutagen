@@ -49,6 +49,12 @@
     .ss-hint { position: fixed; left: 50%; bottom: 1.5rem; z-index: 3; max-width: calc(100% - 2rem); padding: .5rem .85rem; border-radius: .45rem; background: rgb(31 61 37 / 92%); color: #fff; font-family: var(--mono); font-size: .75rem; text-align: center; opacity: 0; transform: translateX(-50%); pointer-events: none; transition: opacity .3s; }
     body.saver .ss-hint.on { opacity: 1; }
     .limit-note { margin: 0 0 clamp(.8rem, 2vw, 1.1rem); padding: .7rem 1rem; border: 1px solid #d9b96a; border-radius: .6rem; background: #fff6dc; color: #5c4512; font-size: .92rem; line-height: 1.45; }
+    .full-btn { margin-top: .45rem; min-height: 2rem; padding: .2rem .6rem; border: 1px solid var(--line); border-radius: .35rem; background: #f7f8ea; color: var(--green); font-family: var(--mono); font-size: .7rem; cursor: pointer; transition: background .2s, color .2s; }
+    .full-btn:hover { background: var(--green); color: #fff; }
+    .full-btn:focus-visible, .full-close:focus-visible { outline: 3px solid #91aa7f; outline-offset: 2px; }
+    .widget-frame.full { position: fixed; inset: 0; z-index: 50; width: 100vw; height: 100vh; margin: 0; border: 0; border-radius: 0; }
+    .tag.holds-full { transform: none !important; animation: none !important; opacity: 1; }
+    .full-close { position: fixed; top: .75rem; right: .75rem; z-index: 60; min-height: 2.4rem; padding: .35rem .8rem; border: 0; border-radius: .45rem; background: var(--green-d); color: #fff; font-family: var(--mono); font-size: .75rem; cursor: pointer; }
     .credit { display: block; font-weight: 650; color: var(--green); }
     .bar, .section-head, .hint, footer { background: rgb(233 237 220 / 90%); border-radius: .5rem; padding: .35rem .6rem; }
     .page { position: relative; z-index: 1; width: min(100%, 72rem); margin: 0 auto; padding: clamp(.9rem, 3vw, 1.75rem) clamp(1rem, 4vw, 2rem) 2.5rem; }
@@ -277,6 +283,7 @@
       Made to grow and mutate, one day at a time.
     </footer>
   </div>
+  <button class="full-close" id="full-close" type="button" hidden>Close full screen</button>
   <div class="ss-hint" id="ss-hint" role="status">Click anywhere or press a key to bring the page back</div>
 
   <script>
@@ -1032,6 +1039,13 @@
           var inlined = window.MUTAGEN_WIDGETS && window.MUTAGEN_WIDGETS[it.widget];
           if (typeof inlined === 'string') fr.srcdoc = inlined; else fr.src = it.widget;
           top.appendChild(fr);
+          var expand = document.createElement('button');
+          expand.type = 'button';
+          expand.className = 'full-btn';
+          expand.textContent = 'Full screen';
+          expand.setAttribute('aria-label', 'Open ' + it.text + ' full screen');
+          expand.addEventListener('click', function () { openFull(fr); });
+          top.appendChild(expand);
         }
 
         var by = document.createElement('span');
@@ -1218,6 +1232,29 @@
         clearInterval(statusTimer);
         statusTimer = setInterval(show, 60000);
       }
+
+      /* ---- widgets can open full screen; the frame stays in place so nothing resets ---- */
+      var fullClose = document.getElementById('full-close'), fullFrame = null;
+      function coverPage(frame) {
+        fullFrame = frame;
+        frame.classList.add('full');
+        frame.closest('.tag').classList.add('holds-full');
+        fullClose.hidden = false;
+        fullClose.focus();
+      }
+      function closeFull() {
+        if (!fullFrame) return;
+        fullFrame.classList.remove('full');
+        fullFrame.closest('.tag').classList.remove('holds-full');
+        fullFrame = null;
+        fullClose.hidden = true;
+      }
+      function openFull(frame) {
+        if (document.fullscreenEnabled && frame.requestFullscreen) frame.requestFullscreen().catch(function () { coverPage(frame); });
+        else coverPage(frame);
+      }
+      fullClose.addEventListener('click', closeFull);
+      document.addEventListener('keydown', function (e) { if (e.key === 'Escape') closeFull(); });
 
       /* ---- screensaver: hides the page and leaves the background running ---- */
       var ssBtn = document.getElementById('ss-btn'), ssHint = document.getElementById('ss-hint'), ssTimer;
