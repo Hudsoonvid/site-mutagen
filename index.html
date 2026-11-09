@@ -614,7 +614,7 @@
         var today = todayDay(), max = Math.max(1, today), past = viewDay !== null;
         var v = past ? viewDay : max;
         var dayText = today >= 1 ? 'Day ' + today : today === 0 ? 'Day 1 starts tomorrow' : 'Day 1 starts ' + fmtDay(1);
-        track.style.setProperty('--p', max > 1 ? (v - 1) / (max - 1) : 1);
+        track.style.setProperty('--p', max > 1 ? (v - 1) / (max - 1) : 0);
         document.body.classList.toggle('past', past);
         dayLabel.textContent = past ? 'Archive · viewing Day ' + v : 'Culture live · ' + dayText;
         tlDay.textContent = past ? 'Day ' + v : dayText;
