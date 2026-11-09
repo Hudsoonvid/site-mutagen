@@ -1072,6 +1072,7 @@
           fr.setAttribute('sandbox', 'allow-scripts');
           fr.setAttribute('loading', 'lazy');
           fr.title = it.text;
+          fr.dataset.widget = it.widget;
           var inlined = window.MUTAGEN_WIDGETS && window.MUTAGEN_WIDGETS[it.widget];
           if (typeof inlined === 'string') fr.srcdoc = inlined; else fr.src = it.widget;
           top.appendChild(fr);
@@ -1300,6 +1301,38 @@
       function closeDash() { dashWrap.hidden = true; dashFrame.src = 'about:blank'; }
       document.getElementById('dash-close').addEventListener('click', closeDash);
       document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && !dashWrap.hidden) closeDash(); });
+
+      /* ---- live updates: new widgets and colonies appear without a refresh ---- */
+      var liveSha = null, livePage = null, liveNoticeShown = false;
+      function applyLive(r) {
+        if (!r) return;
+        liveSha = r.sha;
+        if (!r.items) return;
+        var widgets = r.widgets || {};
+        Object.keys(widgets).forEach(function (path) {
+          var before = window.MUTAGEN_WIDGETS[path];
+          if (before === widgets[path]) return;
+          window.MUTAGEN_WIDGETS[path] = widgets[path];
+          if (before === undefined) return;
+          var open = grid.querySelector('iframe[data-widget="' + path + '"]');
+          if (open) open.srcdoc = widgets[path]; // a regenerated widget swaps in place
+        });
+        render(r.items);
+        applyStatus(r.status);
+        if (livePage && r.page !== livePage && !liveNoticeShown) {
+          liveNoticeShown = true;
+          toast('The page was updated. Refresh to see it.', 12000);
+        }
+        livePage = r.page;
+      }
+      function pollLive() {
+        if (document.hidden) return;
+        try { google.script.run.withSuccessHandler(applyLive).withFailureHandler(function () {}).liveData(liveSha); } catch (e) {}
+      }
+      if (Array.isArray(window.MUTAGEN_DATA) && window.google && google.script && google.script.run) {
+        setTimeout(pollLive, 3000);
+        setInterval(pollLive, 20000);
+      }
 
       /* ---- About menu ---- */
       var aboutBtn = document.getElementById('about-btn'), aboutPanel = document.getElementById('about-panel');
