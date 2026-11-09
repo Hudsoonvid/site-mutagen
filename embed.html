@@ -347,37 +347,70 @@
       var stCells = document.getElementById('st-cells');
       var MUTANT = '#3f9e52', MUTANT_DARK = '#1f5c2e';
       var S = 0, W = 0, L0 = 0, cells = [], dying = [], byKey = {}, hover = null, agar = null, visible = true;
-      var swimmers = [], bgSwimmers = [];
+      var plankton = [], bgColonies = [], PLANKTON_MAX = 46;
 
-      function newSwimmer(x, y, len, speed) {
-        return { x: x, y: y, a: Math.random() * 6.283, len: len, v: speed * (.7 + Math.random() * .6), run: true, timer: Math.random() * 2, turn: 0, ph: Math.random() * 6.283, w: 0 };
+      /* Loose single cells: plain short rods that jiggle, grow and divide. */
+      function addPlankton(x, y, len, a) {
+        var b = { x: x, y: y, a: a, len: len, div: W * (3.9 + Math.random() * .7), rate: W * (.12 + Math.random() * .12), vx: 0, vy: 0, spin: (Math.random() - .5) * .6 };
+        plankton.push(b);
+        return b;
       }
-      function stepSwimmer(b, dt) {
-        b.timer -= dt;
-        if (b.timer <= 0) {
-          b.run = !b.run;
-          b.timer = b.run ? .8 + Math.random() * 2.4 : .12 + Math.random() * .28;
-          if (!b.run) b.turn = (Math.random() - .5) * 11;
+      function stepPlankton(dt) {
+        var limit = S / 2 * .9, n = plankton.length;
+        for (var i = 0; i < n; i++) {
+          var b = plankton[i];
+          b.vx = (b.vx + (Math.random() - .5) * 60 * dt) * .94;
+          b.vy = (b.vy + (Math.random() - .5) * 60 * dt) * .94;
+          b.x += b.vx * dt; b.y += b.vy * dt;
+          b.spin = (b.spin + (Math.random() - .5) * 1.2 * dt) * .98;
+          b.a += b.spin * dt;
+          var d = Math.sqrt(b.x * b.x + b.y * b.y);
+          if (d > limit) { b.x *= limit / d; b.y *= limit / d; }
+          b.len += b.rate * dt;
+          if (b.len >= b.div) {
+            var off = b.len / 4, ca = Math.cos(b.a), sa = Math.sin(b.a), half = b.len / 2;
+            addPlankton(b.x + ca * off, b.y + sa * off, half, b.a + (Math.random() - .5) * .3);
+            b.x -= ca * off; b.y -= sa * off; b.len = half; b.div = W * (3.9 + Math.random() * .7);
+          }
         }
-        if (b.run) {
-          b.a += (Math.random() - .5) * 1.4 * dt;
-          b.x += Math.cos(b.a) * b.v * dt;
-          b.y += Math.sin(b.a) * b.v * dt;
-          b.ph += dt * 16;
-        } else {
-          b.a += b.turn * dt;
-          b.ph += dt * 5;
-        }
+        while (plankton.length > PLANKTON_MAX) plankton.splice(Math.floor(Math.random() * plankton.length), 1);
       }
-      function traceSwimmer(body, tail, b, x, y, scale) {
-        var ca = Math.cos(b.a), sa = Math.sin(b.a), h = b.len / 2 * scale, step = b.len * .36 * scale, amp = b.len * .17 * scale;
-        body.moveTo(x - ca * h, y - sa * h);
-        body.lineTo(x + ca * h, y + sa * h);
-        tail.moveTo(x - ca * h, y - sa * h);
-        for (var i = 1; i <= 8; i++) {
-          var along = -h - i * step, perp = Math.sin(b.ph - i * .95) * amp * (i / 8);
-          tail.lineTo(x + ca * along - sa * perp, y + sa * along + ca * perp);
-        }
+
+      /* Faint colonies behind the page that grow from one cell, then fade and start over. */
+      function newBgColony(b) {
+        b = b || { rnd: Math.random, mutW: 0, mutA: 0, phase: 0, rods: [], ext: 0, settle: 0 };
+        b.rods = [];
+        b.x = Math.random() * bgCv.width;
+        b.y = Math.random() * bgCv.height;
+        b.phase = Math.random() * 6.283;
+        b.tR = 28 + Math.random() * 44;
+        b.cap = Math.round(clamp(.5 * (b.tR / W) * (b.tR / W), 18, 110));
+        b.alpha = 1;
+        b.state = 0;
+        b.timer = Math.random() * 6;
+        return b;
+      }
+      function stepBg(dt) {
+        bgColonies.forEach(function (b) {
+          if (b.state === 0) {
+            b.timer -= dt;
+            if (b.timer <= 0) { b.state = 1; b.rods.push(makeRod(b, 0, 0, Math.random() * 6.283, L0, 0)); }
+          } else if (b.state === 1) {
+            var n = b.rods.length;
+            for (var i = 0; i < n && b.rods.length < b.cap; i++) {
+              b.rods[i].len += b.rods[i].rate * dt * .4;
+              if (b.rods[i].len >= b.rods[i].div) divide(b, b.rods[i]);
+            }
+            relax(b, 1);
+            if (b.rods.length >= b.cap) { b.state = 2; b.timer = 8 + Math.random() * 10; }
+          } else if (b.state === 2) {
+            b.timer -= dt;
+            if (b.timer <= 0) b.state = 3;
+          } else {
+            b.alpha -= dt / 3;
+            if (b.alpha <= 0) newBgColony(b);
+          }
+        });
       }
 
       function capFor(R) { return Math.round(clamp(.5 * (R / W) * (R / W), 24, 520)); }
@@ -420,9 +453,14 @@
 
       function resizeBg() {
         bgCv.width = window.innerWidth; bgCv.height = window.innerHeight;
-        var want = Math.round(clamp(bgCv.width * bgCv.height / 52000, 10, 34));
-        while (bgSwimmers.length < want) bgSwimmers.push(newSwimmer(Math.random() * bgCv.width, Math.random() * bgCv.height, 16 + Math.random() * 14, 16 + Math.random() * 16));
-        bgSwimmers.length = want;
+        if (!W) return;
+        var want = Math.round(clamp(bgCv.width * bgCv.height / 140000, 5, 12));
+        while (bgColonies.length < want) {
+          var b = newBgColony();
+          if (reduce) { seedGrown(b); b.state = 2; }
+          bgColonies.push(b);
+        }
+        bgColonies.length = want;
         if (reduce) drawBg(0);
       }
 
@@ -434,7 +472,7 @@
         cv.width = Math.round(S * dpr); cv.height = Math.round(S * dpr);
         ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
         if (!W) { W = clamp(S / 150, 2.2, 3.4); L0 = W * 2.2; }
-        if (!swimmers.length) for (var i = 0; i < 38; i++) { var a = Math.random() * 6.283, d = Math.sqrt(Math.random()) * .85; swimmers.push(newSwimmer(Math.cos(a) * d, Math.sin(a) * d, W * (2.6 + Math.random() * 1.6), .03 + Math.random() * .05)); }
+        if (!plankton.length) for (var i = 0; i < 34; i++) { var a = Math.random() * 6.283, d = Math.sqrt(Math.random()) * S / 2 * .85; addPlankton(Math.cos(a) * d, Math.sin(a) * d, W * (2 + Math.random() * 1.8), Math.random() * 6.283); }
         makeAgar();
         layout();
         if (reduce) draw(1e12);
@@ -655,11 +693,18 @@
         ctx.beginPath(); ctx.arc(c, c, c, 0, 6.2832); ctx.clip();
         ctx.drawImage(agar, 0, 0, S, S);
 
-        var body = new Path2D(), tail = new Path2D();
-        swimmers.forEach(function (b) { traceSwimmer(body, tail, b, c + b.x * c, c + b.y * c, 1); });
-        ctx.lineCap = 'round'; ctx.lineJoin = 'round';
-        ctx.lineWidth = .9; ctx.strokeStyle = 'rgba(45,70,50,.3)'; ctx.stroke(tail);
-        ctx.lineWidth = W * .9; ctx.strokeStyle = 'rgba(45,70,50,.5)'; ctx.stroke(body);
+        var body = new Path2D(), inner = new Path2D(), sep = new Path2D(), split = false;
+        plankton.forEach(function (b) {
+          var ca = Math.cos(b.a), sa = Math.sin(b.a), h = Math.max(.1, b.len / 2 - W / 2), x = c + b.x, y = c + b.y;
+          body.moveTo(x - ca * h, y - sa * h); body.lineTo(x + ca * h, y + sa * h);
+          inner.moveTo(x - ca * h * .5, y - sa * h * .5); inner.lineTo(x + ca * h * .5, y + sa * h * .5);
+          if (b.len > b.div * .84) { split = true; sep.moveTo(x - sa * W * .55, y + ca * W * .55); sep.lineTo(x + sa * W * .55, y - ca * W * .55); }
+        });
+        ctx.lineCap = 'round';
+        ctx.lineWidth = W + 1; ctx.strokeStyle = 'rgba(60,75,50,.55)'; ctx.stroke(body);
+        ctx.lineWidth = W; ctx.strokeStyle = 'rgba(135,145,95,.82)'; ctx.stroke(body);
+        ctx.lineWidth = W * .36; ctx.strokeStyle = 'rgba(60,75,50,.5)'; ctx.stroke(inner);
+        if (split) { ctx.lineWidth = 1; ctx.strokeStyle = 'rgba(60,75,50,.75)'; ctx.stroke(sep); }
 
         cells.forEach(function (k) { drawColony(k, t); });
         dying = dying.filter(function (k) { if (t - k.dying > 450) return false; drawColony(k, t); return true; });
@@ -674,18 +719,19 @@
       }
 
       function drawBg(dt) {
-        var g = bgCtx, w = bgCv.width, h = bgCv.height;
-        g.clearRect(0, 0, w, h);
-        g.lineCap = 'round'; g.lineJoin = 'round';
-        bgSwimmers.forEach(function (b) {
-          if (dt) stepSwimmer(b, dt);
-          var m = 50;
-          if (b.x < -m) b.x = w + m; else if (b.x > w + m) b.x = -m;
-          if (b.y < -m) b.y = h + m; else if (b.y > h + m) b.y = -m;
-          var body = new Path2D(), tail = new Path2D();
-          traceSwimmer(body, tail, b, b.x, b.y, 1);
-          g.lineWidth = 1.2; g.strokeStyle = 'rgba(45,82,51,.11)'; g.stroke(tail);
-          g.lineWidth = b.len * .34; g.strokeStyle = 'rgba(45,82,51,.14)'; g.stroke(body);
+        var g = bgCtx;
+        if (dt) stepBg(dt);
+        g.clearRect(0, 0, bgCv.width, bgCv.height);
+        g.lineCap = 'round';
+        bgColonies.forEach(function (b) {
+          if (!b.rods.length) return;
+          var path = new Path2D();
+          b.rods.forEach(function (q) {
+            var ca = Math.cos(q.a), sa = Math.sin(q.a), h = Math.max(.1, q.len / 2 - W / 2), x = b.x + q.x, y = b.y + q.y;
+            path.moveTo(x - ca * h, y - sa * h); path.lineTo(x + ca * h, y + sa * h);
+          });
+          g.lineWidth = W + 1; g.strokeStyle = 'rgba(45,82,51,' + (.2 * b.alpha) + ')'; g.stroke(path);
+          g.lineWidth = W; g.strokeStyle = 'rgba(120,145,100,' + (.2 * b.alpha) + ')'; g.stroke(path);
         });
       }
 
@@ -758,10 +804,7 @@
           var dt = lastTick ? Math.min(.05, (ts - lastTick) / 1000) : .03;
           lastTick = ts;
           frame++;
-          swimmers.forEach(function (b) {
-            stepSwimmer(b, dt);
-            if (b.x * b.x + b.y * b.y > .8) b.a = Math.atan2(-b.y, -b.x) + (Math.random() - .5);
-          });
+          stepPlankton(dt);
           if (visible) { stepSim(ts, dt); draw(ts); }
           if (frame % 2 === 0) drawBg(dt * 2);
           if (frame % 12 === 0) updateCount();
