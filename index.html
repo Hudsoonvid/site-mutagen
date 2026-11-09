@@ -42,7 +42,7 @@
     .eyebrow { margin: 0 0 1.25rem; color: #64715e; font-size: .78rem; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; display: flex; align-items: center; gap: .6rem; }
     .pulse { width: .6rem; height: .6rem; border-radius: 50%; background: #5fa05f; box-shadow: 0 0 0 0 rgb(95 160 95 / 60%); animation: pulse 2s infinite; }
     @keyframes pulse { 70% { box-shadow: 0 0 0 .7rem rgb(95 160 95 / 0%); } 100% { box-shadow: 0 0 0 0 rgb(95 160 95 / 0%); } }
-    h1 { max-width: 11ch; margin: 0; font-size: clamp(3rem, 10vw, 5.75rem); letter-spacing: -.075em; line-height: .98;
+    h1 { max-width: 11ch; margin: 0; font-size: clamp(3rem, 10vw, 5.75rem); letter-spacing: -.075em; line-height: 1.05; padding-bottom: .12em;
       background: linear-gradient(100deg, #20231f 20%, #4f7a4f 50%, #20231f 80%); background-size: 200% auto;
       -webkit-background-clip: text; background-clip: text; color: transparent; animation: shine 6s linear infinite; }
     @keyframes shine { to { background-position: 200% center; } }
@@ -98,7 +98,8 @@
     }
     .requested-by:hover::after, .requested-by:focus::after { opacity: 1; transform: none; }
 
-    .empty { grid-column: 1 / -1; padding: 2rem; text-align: center; color: #858980; border: 1px dashed var(--line); border-radius: 1.25rem; }
+    .grid > .empty { flex: 1 0 100%; scroll-snap-align: start; }
+    .empty { padding: 2rem; text-align: center; color: #858980; border: 1px dashed var(--line); border-radius: 1.25rem; }
     footer { margin-top: 3.5rem; text-align: center; color: #858980; font-size: .85rem; }
 
     @keyframes rise { from { opacity: 0; transform: translateY(1.5rem); } to { opacity: 1; transform: none; } }
