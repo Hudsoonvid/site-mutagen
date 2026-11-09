@@ -132,7 +132,6 @@
         setTimeout(function () { delete del.dataset.sure; del.textContent = 'Delete'; }, 4000);
       };
       [rename, reprompt, regen, del].forEach(function (b) { row.appendChild(b); });
-      [wrap.lastChild].forEach(function () {});
       wrap.appendChild(nameLabel); wrap.appendChild(name); wrap.appendChild(promptLabel); wrap.appendChild(prompt); wrap.appendChild(row);
       box.appendChild(wrap);
     });

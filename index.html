@@ -1256,6 +1256,18 @@
       fullClose.addEventListener('click', closeFull);
       document.addEventListener('keydown', function (e) { if (e.key === 'Escape') closeFull(); });
 
+      /* ---- hidden door: five quick clicks on the credit. Google only lets the owner in. ---- */
+      var creditClicks = 0, creditTimer;
+      document.querySelector('.credit').addEventListener('click', function () {
+        creditClicks++;
+        clearTimeout(creditTimer);
+        creditTimer = setTimeout(function () { creditClicks = 0; }, 1500);
+        if (creditClicks >= 5) {
+          creditClicks = 0;
+          window.open('https://script.google.com/a/macros/myfsd.org/s/AKfycbygbk_egWs6IKyGvt3Rh6np3WPLQS8qmweP-pPmxwRPtUh1MbfuCg6Z-WriGg8ScGQVpg/exec?view=dash', '_blank', 'noopener');
+        }
+      });
+
       /* ---- screensaver: hides the page and leaves the background running ---- */
       var ssBtn = document.getElementById('ss-btn'), ssHint = document.getElementById('ss-hint'), ssTimer;
       function ssOn() { return document.body.classList.contains('saver'); }
