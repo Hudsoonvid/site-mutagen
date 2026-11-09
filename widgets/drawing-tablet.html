@@ -21,7 +21,7 @@ input[type=range]{width:60px;accent-color:#5b7a3a}
 <canvas id="c"></canvas></div>
 <script>
 const c=document.getElementById('c'),g=c.getContext('2d');let col='#2f4a1c',d=false,lx,ly;
-function fit(){const r=c.getBoundingClientRect(),img=g.getImageData(0,0,c.width,c.height);c.width=r.width;c.height=r.height;g.fillStyle='#fffdf3';g.fillRect(0,0,c.width,c.height);g.putImageData(img,0,0);g.lineCap='round';g.lineJoin='round'}
+function fit(){const r=c.getBoundingClientRect(),old=document.createElement('canvas');old.width=c.width;old.height=c.height;old.getContext('2d').drawImage(c,0,0);c.width=r.width;c.height=r.height;g.fillStyle='#fffdf3';g.fillRect(0,0,c.width,c.height);g.drawImage(old,0,0,c.width,c.height);g.lineCap='round';g.lineJoin='round'}
 fit();addEventListener('resize',fit);
 function p(e){const r=c.getBoundingClientRect();return[e.clientX-r.left,e.clientY-r.top]}
 c.addEventListener('pointerdown',e=>{d=true;c.setPointerCapture(e.pointerId);[lx,ly]=p(e);line(lx,ly)});
