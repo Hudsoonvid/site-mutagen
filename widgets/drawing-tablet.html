@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<style>
+html,body{margin:0;height:100%;background:#f4efdc;font-family:system-ui,sans-serif;overflow:hidden}
+#w{display:flex;flex-direction:column;height:100%;box-sizing:border-box;padding:6px;gap:6px}
+#bar{display:flex;gap:6px;align-items:center}
+button{font:inherit;font-size:12px;border:1px solid #5b7a3a;background:#e6efd0;color:#2f4a1c;border-radius:6px;padding:3px 8px;cursor:pointer}
+button:focus-visible{outline:2px solid #2f4a1c}
+.sw{width:18px;height:18px;padding:0;border-radius:50%;border:2px solid #f4efdc;box-shadow:0 0 0 1px #5b7a3a}
+.sw.on{box-shadow:0 0 0 2px #2f4a1c}
+input[type=range]{width:60px;accent-color:#5b7a3a}
+#c{flex:1;min-height:0;width:100%;background:#fffdf3;border:2px solid #5b7a3a;border-radius:8px;touch-action:none;cursor:crosshair}
+</style></head><body>
+<div id="w"><div id="bar">
+<button class="sw on" data-c="#2f4a1c" style="background:#2f4a1c" aria-label="Moss"></button>
+<button class="sw" data-c="#8a5a2b" style="background:#8a5a2b" aria-label="Brown"></button>
+<button class="sw" data-c="#b23a2e" style="background:#b23a2e" aria-label="Red"></button>
+<button class="sw" data-c="#fffdf3" style="background:#fffdf3" aria-label="Eraser"></button>
+<input id="s" type="range" min="1" max="14" value="3" aria-label="Brush size">
+<button id="x">Clear</button></div>
+<canvas id="c"></canvas></div>
+<script>
+const c=document.getElementById('c'),g=c.getContext('2d');let col='#2f4a1c',d=false,lx,ly;
+function fit(){const r=c.getBoundingClientRect(),img=g.getImageData(0,0,c.width,c.height);c.width=r.width;c.height=r.height;g.fillStyle='#fffdf3';g.fillRect(0,0,c.width,c.height);g.putImageData(img,0,0);g.lineCap='round';g.lineJoin='round'}
+fit();addEventListener('resize',fit);
+function p(e){const r=c.getBoundingClientRect();return[e.clientX-r.left,e.clientY-r.top]}
+c.addEventListener('pointerdown',e=>{d=true;c.setPointerCapture(e.pointerId);[lx,ly]=p(e);line(lx,ly)});
+c.addEventListener('pointermove',e=>{if(!d)return;const[x,y]=p(e);line(x,y)});
+['pointerup','pointercancel'].forEach(t=>c.addEventListener(t,()=>d=false));
+function line(x,y){g.strokeStyle=col;g.lineWidth=+document.getElementById('s').value;g.beginPath();g.moveTo(lx,ly);g.lineTo(x+.01,y);g.stroke();lx=x;ly=y}
+document.querySelectorAll('.sw').forEach(b=>b.onclick=()=>{col=b.dataset.c;document.querySelectorAll('.sw').forEach(o=>o.classList.remove('on'));b.classList.add('on')});
+document.getElementById('x').onclick=()=>{g.fillStyle='#fffdf3';g.fillRect(0,0,c.width,c.height)};
+</script></body></html>
