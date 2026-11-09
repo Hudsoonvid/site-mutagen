@@ -58,7 +58,16 @@
     .section-head h2 { margin: 0; font-size: clamp(1.4rem, 4vw, 1.9rem); letter-spacing: -.04em; }
     .count { color: #858980; font-size: .9rem; font-weight: 600; }
 
-    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr)); gap: 1.1rem; margin: 0; padding: 0; list-style: none; }
+    .carousel { position: relative; }
+    .grid { display: flex; gap: 1.1rem; margin: 0 -1rem; padding: 1.2rem 1rem 1.6rem; list-style: none; overflow-x: auto; scroll-snap-type: x mandatory; scroll-padding: 0 1rem; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
+    .grid::-webkit-scrollbar { display: none; }
+    .grid > .widget { flex: 0 0 min(17rem, 78%); scroll-snap-align: start; }
+    .nav { position: absolute; top: 45%; z-index: 4; width: 2.8rem; height: 2.8rem; border: 1px solid var(--line); border-radius: 50%; background: #fff; color: var(--green); font-size: 1.3rem; cursor: pointer; box-shadow: 0 .6rem 1.4rem rgb(32 35 31 / 14%); transition: transform .2s, background .2s; }
+    .nav:hover { background: var(--green); color: #fff; transform: scale(1.1); }
+    .nav:focus-visible { outline: 3px solid #91aa7f; outline-offset: 3px; }
+    .nav.prev { left: -.6rem; } .nav.next { right: -.6rem; }
+    @media (max-width: 600px) { .nav { display: none; } }
+    .hint { margin: 0 .25rem; color: #858980; font-size: .8rem; }
     .widget {
       --accent: #5fa05f; --tint: #eaf3e4;
       position: relative; display: flex; flex-direction: column; justify-content: space-between; gap: 1.4rem;
@@ -115,7 +124,12 @@
     </section>
 
     <div class="section-head"><h2>Latest additions</h2><span class="count" id="count"></span></div>
-    <ul class="grid" id="additions" aria-label="Additions"></ul>
+    <div class="carousel">
+      <button class="nav prev" id="prev" aria-label="Previous additions">‹</button>
+      <ul class="grid" id="additions" aria-label="Additions"></ul>
+      <button class="nav next" id="next" aria-label="Next additions">›</button>
+    </div>
+    <p class="hint">Swipe or scroll sideways — new widgets appear automatically.</p>
 
     <footer>Made to grow, one day at a time.</footer>
   </div>
@@ -163,6 +177,22 @@
       }
       load();
       setInterval(load, 60000);
+
+      function step(dir) { grid.scrollBy({ left: dir * (grid.firstElementChild ? grid.firstElementChild.offsetWidth + 18 : 280), behavior: 'smooth' }); }
+      document.getElementById('prev').onclick = function () { step(-1); };
+      document.getElementById('next').onclick = function () { step(1); };
+
+      // gentle auto-advance; pauses while hovered/focused/touched, off for reduced motion
+      var paused = false;
+      ['mouseenter', 'focusin', 'touchstart'].forEach(function (e) { grid.addEventListener(e, function () { paused = true; }); });
+      ['mouseleave', 'focusout'].forEach(function (e) { grid.addEventListener(e, function () { paused = false; }); });
+      if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+        setInterval(function () {
+          if (paused || grid.scrollWidth <= grid.clientWidth + 4) return;
+          var atEnd = grid.scrollLeft + grid.clientWidth >= grid.scrollWidth - 4;
+          if (atEnd) grid.scrollTo({ left: 0, behavior: 'smooth' }); else step(1);
+        }, 4000);
+      }
     })();
   </script>
 </body>
