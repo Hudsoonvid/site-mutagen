@@ -48,6 +48,13 @@
     .ss-btn:focus-visible { outline: 3px solid #91aa7f; outline-offset: 2px; }
     .ss-hint { position: fixed; left: 50%; bottom: 1.5rem; z-index: 3; max-width: calc(100% - 2rem); padding: .5rem .85rem; border-radius: .45rem; background: rgb(31 61 37 / 92%); color: #fff; font-family: var(--mono); font-size: .75rem; text-align: center; opacity: 0; transform: translateX(-50%); pointer-events: none; transition: opacity .3s; }
     body.saver .ss-hint.on { opacity: 1; }
+    .ss-pick { position: fixed; left: 50%; bottom: 4.2rem; z-index: 3; display: none; flex-wrap: wrap; justify-content: center; gap: .4rem; width: max-content; max-width: calc(100% - 2rem); padding: .45rem; border-radius: .6rem; background: rgb(31 61 37 / 92%); transform: translateX(-50%); opacity: 0; transition: opacity .3s; }
+    body.saver .ss-pick { display: flex; }
+    body.saver .ss-pick.on, .ss-pick:focus-within { opacity: 1; }
+    .ss-pick button { min-height: 2.2rem; padding: .3rem .75rem; border: 1px solid #91aa7f; border-radius: .35rem; background: transparent; color: #fff; font-family: var(--mono); font-size: .75rem; cursor: pointer; }
+    .ss-pick button:hover { background: rgb(255 255 255 / 14%); }
+    .ss-pick button.on { background: #fff; color: var(--green-d); }
+    .ss-pick button:focus-visible { outline: 3px solid #d7e8c8; outline-offset: 2px; }
     .limit-note { margin: 0 0 clamp(.8rem, 2vw, 1.1rem); padding: .7rem 1rem; border: 1px solid #d9b96a; border-radius: .6rem; background: #fff6dc; color: #5c4512; font-size: .92rem; line-height: 1.45; }
     .full-btn { margin-top: .45rem; min-height: 2rem; padding: .2rem .6rem; border: 1px solid var(--line); border-radius: .35rem; background: #f7f8ea; color: var(--green); font-family: var(--mono); font-size: .7rem; cursor: pointer; transition: background .2s, color .2s; }
     .full-btn:hover { background: var(--green); color: #fff; }
@@ -236,7 +243,7 @@
 
     <section class="about" id="about-panel" aria-label="About this project" hidden>
       <h2>About this project</h2>
-      <p>Mutagen is a student coding and biology project by Hudson S. Classmates suggest small ideas, and approved ones are added to this page. The dish is a simple computer model of how bacteria grow, divide and mutate. The background is a program solving a Minesweeper board using only the clues a player can see.</p>
+      <p>Mutagen is a student coding and biology project by Hudson S. Classmates suggest small ideas, and approved ones are added to this page. The dish is a simple computer model of how bacteria grow, divide and mutate. The background switches each day between a program solving a Minesweeper board using only the clues a player can see, and a reaction-diffusion simulation, the math behind patterns like coral and animal spots.</p>
       <h3>How requests are handled</h3>
       <ul>
         <li>Only people on the class list can have a request added, so nothing is anonymous.</li>
@@ -318,7 +325,12 @@
     <iframe id="dash-frame" title="Control room"></iframe>
   </div>
   <button class="full-close" id="full-close" type="button" hidden>Close full screen</button>
-  <div class="ss-hint" id="ss-hint" role="status">Click anywhere or press a key to bring the page back</div>
+  <div class="ss-pick" id="ss-pick" role="group" aria-label="Choose a background">
+    <button type="button" data-bg="" class="on">Today's pick</button>
+    <button type="button" data-bg="mines">Minesweeper</button>
+    <button type="button" data-bg="rd">Reaction diffusion</button>
+  </div>
+  <div class="ss-hint" id="ss-hint" role="status">Click anywhere else or press a key to bring the page back</div>
 
   <script>window.MUTAGEN_DATA=[{"text": "Drawing tablet", "requestedBy": "Hudson S.", "submittedAt": "2026-11-08T20:16:19", "addedAt": "2026-11-08T20:17:05", "widget": "widgets/drawing-tablet.html"}, {"text": "Game where you create genome structures for the color of skin", "prompt": "Game where you create genome structures for the color of skin by using building blocks such as A, G, T, etc. Then, once you make your DNA strand it shows you what skin color you made", "requestedBy": "Harrison S.", "submittedAt": "2026-11-08T20:31:20", "addedAt": "2026-11-08T21:03:30", "widget": "widgets/genome-skin.html"}];window.MUTAGEN_WIDGETS={"widgets/drawing-tablet.html": "\u003c!DOCTYPE html>\n\u003chtml>\u003chead>\u003cmeta http-equiv=\"Content-Security-Policy\" content=\"default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data: blob:; media-src data: blob:; font-src data:\">\u003cmeta charset=\"utf-8\">\u003cmeta name=\"viewport\" content=\"width=device-width,initial-scale=1\">\n\u003cstyle>\nhtml,body{margin:0;height:100%;background:#f4efdc;font-family:system-ui,sans-serif;overflow:hidden}\n#w{display:flex;flex-direction:column;height:100%;box-sizing:border-box;padding:6px;gap:6px}\n#bar{display:flex;gap:6px;align-items:center}\nbutton{font:inherit;font-size:12px;border:1px solid #5b7a3a;background:#e6efd0;color:#2f4a1c;border-radius:6px;padding:3px 8px;cursor:pointer}\nbutton:focus-visible{outline:2px solid #2f4a1c}\n.sw{width:18px;height:18px;padding:0;border-radius:50%;border:2px solid #f4efdc;box-shadow:0 0 0 1px #5b7a3a}\n.sw.on{box-shadow:0 0 0 2px #2f4a1c}\ninput[type=range]{width:60px;accent-color:#5b7a3a}\n#c{flex:1;min-height:0;width:100%;background:#fffdf3;border:2px solid #5b7a3a;border-radius:8px;touch-action:none;cursor:crosshair}\n\u003c/style>\u003c/head>\u003cbody>\n\u003cdiv id=\"w\">\u003cdiv id=\"bar\">\n\u003cbutton class=\"sw on\" data-c=\"#2f4a1c\" style=\"background:#2f4a1c\" aria-label=\"Moss\">\u003c/button>\n\u003cbutton class=\"sw\" data-c=\"#8a5a2b\" style=\"background:#8a5a2b\" aria-label=\"Brown\">\u003c/button>\n\u003cbutton class=\"sw\" data-c=\"#b23a2e\" style=\"background:#b23a2e\" aria-label=\"Red\">\u003c/button>\n\u003cbutton class=\"sw\" data-c=\"#fffdf3\" style=\"background:#fffdf3\" aria-label=\"Eraser\">\u003c/button>\n\u003cinput id=\"s\" type=\"range\" min=\"1\" max=\"14\" value=\"3\" aria-label=\"Brush size\">\n\u003cbutton id=\"x\">Clear\u003c/button>\u003c/div>\n\u003ccanvas id=\"c\">\u003c/canvas>\u003c/div>\n\u003cscript>\nconst c=document.getElementById('c'),g=c.getContext('2d');let col='#2f4a1c',d=false,lx,ly;\nfunction fit(){const r=c.getBoundingClientRect(),old=document.createElement('canvas');old.width=c.width;old.height=c.height;old.getContext('2d').drawImage(c,0,0);c.width=r.width;c.height=r.height;g.fillStyle='#fffdf3';g.fillRect(0,0,c.width,c.height);g.drawImage(old,0,0,c.width,c.height);g.lineCap='round';g.lineJoin='round'}\nfit();addEventListener('resize',fit);\nfunction p(e){const r=c.getBoundingClientRect();return[e.clientX-r.left,e.clientY-r.top]}\nc.addEventListener('pointerdown',e=>{d=true;c.setPointerCapture(e.pointerId);[lx,ly]=p(e);line(lx,ly)});\nc.addEventListener('pointermove',e=>{if(!d)return;const[x,y]=p(e);line(x,y)});\n['pointerup','pointercancel'].forEach(t=>c.addEventListener(t,()=>d=false));\nfunction line(x,y){g.strokeStyle=col;g.lineWidth=+document.getElementById('s').value;g.beginPath();g.moveTo(lx,ly);g.lineTo(x+.01,y);g.stroke();lx=x;ly=y}\ndocument.querySelectorAll('.sw').forEach(b=>b.onclick=()=>{col=b.dataset.c;document.querySelectorAll('.sw').forEach(o=>o.classList.remove('on'));b.classList.add('on')});\ndocument.getElementById('x').onclick=()=>{g.fillStyle='#fffdf3';g.fillRect(0,0,c.width,c.height)};\n\u003c/script>\u003c/body>\u003c/html>\n", "widgets/genome-skin.html": "\u003c!DOCTYPE html>\n\u003chtml lang=\"en\">\u003chead>\u003cmeta http-equiv=\"Content-Security-Policy\" content=\"default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data: blob:; media-src data: blob:; font-src data:\">\u003cmeta charset=\"utf-8\">\u003cmeta name=\"viewport\" content=\"width=device-width,initial-scale=1\">\n\u003cstyle>\nhtml,body{margin:0;height:100%;background:#f4efdc;color:#2f4a1c;font-family:system-ui,sans-serif;overflow:hidden}\n#w{position:relative;display:flex;flex-direction:column;gap:6px;height:100%;box-sizing:border-box;padding:7px}\n#bases{display:flex;flex-wrap:wrap;align-items:center;gap:5px}\nbutton{font:inherit;font-size:12px;font-weight:650;min-height:28px;padding:3px 9px;border:1px solid #5b7a3a;border-radius:6px;background:#e6efd0;color:#2f4a1c;cursor:pointer}\nbutton:hover{background:#d6e4b6}\nbutton:focus-visible{outline:2px solid #2f4a1c;outline-offset:1px}\nbutton:disabled{opacity:.45;cursor:default}\n.b{width:32px;padding:3px 0;color:#fff;border-color:transparent}\n.A,.A:hover{background:#3f7d9c}.T,.T:hover{background:#b0822e}.G,.G:hover{background:#4d8a4a}.C,.C:hover{background:#b0507a}\n#done{margin-left:auto;background:#2d5233;color:#fff;border-color:#2d5233}\n#strand{flex:1;min-height:0;overflow:auto;display:flex;flex-wrap:wrap;align-content:flex-start;gap:3px;padding:6px;background:#fffdf3;border:2px solid #5b7a3a;border-radius:8px}\n.t{display:flex;align-items:center;justify-content:center;width:clamp(19px,5vmin,44px);height:clamp(19px,5vmin,44px);border-radius:5px;color:#fff;font-size:clamp(11px,2.6vmin,22px);font-weight:700}\n#hint{margin:auto;color:#7d8872;font-size:13px;text-align:center}\n#result{position:absolute;inset:0;display:none;flex-direction:column;align-items:center;justify-content:center;gap:6px;padding:10px;box-sizing:border-box;background:#f4efdc;text-align:center}\n#result.on{display:flex}\n#swatch{width:clamp(70px,34vmin,260px);height:clamp(70px,34vmin,260px);border-radius:50%;border:3px solid #fffdf3;box-shadow:0 2px 9px rgb(45 60 40 / 35%)}\n#label{font-size:clamp(13px,3.2vmin,24px);font-weight:700}\nsmall{color:#5b6058;font-size:clamp(10px,2.2vmin,15px)}\n\u003c/style>\u003c/head>\u003cbody>\n\u003cdiv id=\"w\">\n  \u003cdiv id=\"bases\">\n    \u003cbutton class=\"b A\" data-b=\"A\" aria-label=\"Add A\">A\u003c/button>\n    \u003cbutton class=\"b T\" data-b=\"T\" aria-label=\"Add T\">T\u003c/button>\n    \u003cbutton class=\"b G\" data-b=\"G\" aria-label=\"Add G\">G\u003c/button>\n    \u003cbutton class=\"b C\" data-b=\"C\" aria-label=\"Add C\">C\u003c/button>\n    \u003cbutton id=\"undo\">Undo\u003c/button>\n    \u003cbutton id=\"clear\">Clear\u003c/button>\n    \u003cbutton id=\"done\" disabled>Finish\u003c/button>\n  \u003c/div>\n  \u003cdiv id=\"strand\" aria-live=\"polite\">\u003cdiv id=\"hint\">Add at least 6 blocks to build a DNA strand\u003c/div>\u003c/div>\n  \u003cdiv id=\"result\" role=\"status\">\n    \u003cdiv id=\"swatch\">\u003c/div>\n    \u003cdiv id=\"label\">\u003c/div>\n    \u003csmall>Just a game. Real skin color comes from many genes working together.\u003c/small>\n    \u003cbutton id=\"again\">Build another\u003c/button>\n  \u003c/div>\n\u003c/div>\n\u003cscript>\nvar strand=[],MIN=6,MAX=40,el=document.getElementById('strand'),hint=document.getElementById('hint'),done=document.getElementById('done'),result=document.getElementById('result');\nvar BASE={A:.14,T:.36,G:.68,C:.94};\nvar TONES=[[248,224,202],[229,186,150],[192,139,102],[138,90,60],[92,58,38],[58,36,24]];\nfunction draw(){\n  el.textContent='';\n  if(!strand.length)el.appendChild(hint);\n  strand.forEach(function(b){var t=document.createElement('div');t.className='t '+b;t.textContent=b;el.appendChild(t)});\n  el.scrollTop=el.scrollHeight;\n  done.disabled=strand.length\u003cMIN;\n}\nfunction level(){\n  var sum=0,turn=0;\n  strand.forEach(function(b,i){sum+=BASE[b];turn+=BASE[b]*Math.sin(i*1.7)});\n  return Math.max(0,Math.min(1,sum/strand.length+turn/strand.length*.22));\n}\nfunction tone(p){\n  var at=p*(TONES.length-1),i=Math.min(TONES.length-2,Math.floor(at)),f=at-i;\n  return 'rgb('+TONES[i].map(function(v,c){return Math.round(v+(TONES[i+1][c]-v)*f)}).join(',')+')';\n}\ndocument.querySelectorAll('.b').forEach(function(b){b.onclick=function(){if(strand.length\u003cMAX){strand.push(b.dataset.b);draw()}}});\ndocument.getElementById('undo').onclick=function(){strand.pop();draw()};\ndocument.getElementById('clear').onclick=function(){strand=[];draw()};\ndone.onclick=function(){\n  var p=level();\n  document.getElementById('swatch').style.background=tone(p);\n  document.getElementById('label').textContent='Your strand made this shade. Melanin level: '+Math.round(p*100)+'%';\n  result.classList.add('on');\n  document.getElementById('again').focus();\n};\ndocument.getElementById('again').onclick=function(){result.classList.remove('on');strand=[];draw()};\n\u003c/script>\n\u003c/body>\u003c/html>\n"};window.MUTAGEN_STATUS={};</script>
   <script>
@@ -449,7 +461,100 @@
       })();
       var ms = null;
 
-      function msNew() {
+      /* ---- background: Gray-Scott reaction diffusion, two chemicals spreading and reacting.
+         The same math produces patterns like coral, spots and fingerprints. ---- */
+      var rd = null;
+      var RD_PRESETS = [[.0545, .062], [.0367, .0649], [.029, .057], [.037, .06], [.03, .062], [.025, .06], [.042, .059]];
+      var RD_PALETTE = new Uint32Array(256);
+      (function () {
+        function mix(a, b, t) { return Math.round(a + (b - a) * t); }
+        for (var i = 0; i < 256; i++) {
+          var t = i / 255, near = t < .45;
+          var f = near ? t / .45 : (t - .45) / .55;
+          RD_PALETTE[i] = near
+            ? msColor(mix(214, 240, f), mix(220, 222, f), mix(196, 142, f))
+            : msColor(mix(240, 246, f), mix(222, 188, f), mix(142, 30, f));
+        }
+      })();
+
+      function rdNew(seed) {
+        var w = window.innerWidth, h = window.innerHeight, r = rng(hash('rd' + seed));
+        var size = Math.max(3, Math.ceil(Math.sqrt(w * h / 70000)));
+        var cols = Math.ceil(w / size), rows = Math.ceil(h / size), n = cols * rows;
+        var preset = RD_PRESETS[Math.floor(r() * RD_PRESETS.length)];
+        var U = new Float32Array(n).fill(1), V = new Float32Array(n);
+        for (var b = 6 + Math.floor(r() * 10); b > 0; b--) {
+          var cx = Math.floor(r() * cols), cy = Math.floor(r() * rows), rad = 4 + Math.floor(r() * 10);
+          for (var dy = -rad; dy <= rad; dy++) for (var dx = -rad; dx <= rad; dx++) {
+            if (dx * dx + dy * dy > rad * rad) continue;
+            var i = ((cy + dy + rows) % rows) * cols + (cx + dx + cols) % cols;
+            U[i] = .5; V[i] = .25 + r() * .1;
+          }
+        }
+        bgCv.width = cols;
+        bgCv.height = rows;
+        var img = bgCtx.createImageData(cols, rows);
+        rd = { cols: cols, rows: rows, n: n, aspect: w / h, F: preset[0] + (r() - .5) * .002, k: preset[1] + (r() - .5) * .001, U: U, V: V, U2: new Float32Array(n), V2: new Float32Array(n), img: img, px: new Uint32Array(img.data.buffer), age: 0 };
+        rdPaint();
+      }
+
+      function rdIterate() {
+        var g = rd, cols = g.cols, rows = g.rows, F = g.F, kill = F + g.k, U = g.U, V = g.V, U2 = g.U2, V2 = g.V2;
+        for (var y = 0, i = 0; y < rows; y++) {
+          var up = ((y + rows - 1) % rows) * cols, down = ((y + 1) % rows) * cols, row = y * cols;
+          for (var x = 0; x < cols; x++, i++) {
+            var left = row + (x + cols - 1) % cols, right = row + (x + 1) % cols, above = up + x, below = down + x;
+            var u = U[i], v = V[i], react = u * v * v;
+            U2[i] = u + .16 * (U[above] + U[below] + U[left] + U[right] - 4 * u) - react + F * (1 - u);
+            V2[i] = v + .08 * (V[above] + V[below] + V[left] + V[right] - 4 * v) + react - kill * v;
+          }
+        }
+        g.U = U2; g.V = V2; g.U2 = U; g.V2 = V;
+      }
+
+      function rdPaint() {
+        var g = rd, V = g.V, px = g.px;
+        for (var i = 0; i < g.n; i++) {
+          var t = V[i] * 2.8 * 255 | 0;
+          px[i] = RD_PALETTE[t < 0 ? 0 : t > 255 ? 255 : t];
+        }
+        bgCtx.putImageData(g.img, 0, 0);
+      }
+
+      function rdStep() {
+        var start = performance.now(), done = 0;
+        while (done < 8 && performance.now() - start < 9) { rdIterate(); done++; }
+        rd.age += done;
+        rdPaint();
+        if (rd.age > 60000) { bgAttempt++; bgBegin(); } // start a fresh pattern once it has settled
+      }
+
+      /* ---- which background to show. Odd days are Minesweeper, even days reaction diffusion.
+         Each day has its own seed, so the record can rebuild that day's background. ---- */
+      var BG_NAMES = { mines: 'Minesweeper', rd: 'reaction diffusion' };
+      var bgReady = false, bgMode = null, bgDay = null, bgPick = null, bgAttempt = 0, bgSoon;
+      function bgModeFor(day) { return ((day % 2) + 2) % 2 === 0 ? 'rd' : 'mines'; }
+      function bgBegin() {
+        var seed = (bgDay + 100000) * 64 + bgAttempt;
+        bgCv.style.imageRendering = bgMode === 'rd' ? 'auto' : 'pixelated';
+        if (bgMode === 'rd') { ms = null; rdNew(seed); } else { rd = null; msNew(seed); }
+      }
+      function bgSync() {
+        if (!bgReady || !window.innerWidth || !window.innerHeight) return;
+        var day = viewDay === null ? todayDay() : viewDay, mode = bgPick || bgModeFor(day);
+        if (mode === bgMode && day === bgDay && (ms || rd)) return;
+        bgMode = mode; bgDay = day; bgAttempt = 0;
+        bgBegin();
+      }
+      function bgSyncSoon() { clearTimeout(bgSoon); bgSoon = setTimeout(bgSync, 250); }
+      function bgTick() {
+        if (!bgReady) return;
+        if (rd) rdStep();
+        else if (ms) msStep();
+        else bgSync();
+      }
+
+      function msNew(seed) {
         var w = window.innerWidth, h = window.innerHeight;
         var size = Math.max(2, Math.ceil(Math.sqrt(w * h / MS_MAX_CELLS)));
         var cols = Math.ceil(w / size), rows = Math.ceil(h / size), n = cols * rows;
@@ -467,9 +572,9 @@
         bgCv.width = cols;
         bgCv.height = rows;
         var img = bgCtx.createImageData(cols, rows);
-        ms = { cols: cols, rows: rows, aspect: w / h, n: n, nb: nb, img: img, px: new Uint32Array(img.data.buffer), view: new Int8Array(n).fill(MS_HIDDEN), filled: new Uint8Array(n), mine: null, mines: Math.round(n * MS_DENSITY), flags: 0, open: 0, born: new Float64Array(n), mark: new Int32Array(n), stamp: 0, bloom: [], todo: [], active: [], fresh: [], scan: 0, moved: false, quota: Math.round(clamp(n / 1100, 5, 260)), over: 0, endAt: 0, wiping: false };
+        ms = { rnd: rng(hash('mines' + seed)), cols: cols, rows: rows, aspect: w / h, n: n, nb: nb, img: img, px: new Uint32Array(img.data.buffer), view: new Int8Array(n).fill(MS_HIDDEN), filled: new Uint8Array(n), mine: null, mines: Math.round(n * MS_DENSITY), flags: 0, open: 0, born: new Float64Array(n), mark: new Int32Array(n), stamp: 0, bloom: [], todo: [], active: [], fresh: [], scan: 0, moved: false, quota: Math.round(clamp(n / 1100, 5, 260)), over: 0, endAt: 0, wiping: false };
         msPaintAll();
-        msReveal(Math.floor(Math.random() * rows * .6 + rows * .2) * cols + Math.floor(Math.random() * cols * .6 + cols * .2));
+        msReveal(Math.floor(ms.rnd() * rows * .6 + rows * .2) * cols + Math.floor(ms.rnd() * cols * .6 + cols * .2));
       }
 
       /* A flag with no hidden squares left around it gets filled in with the growth. */
@@ -493,7 +598,7 @@
         for (i = 0; i < g.n; i++) if (!safe[i]) spots.push(i);
         g.mine = new Uint8Array(g.n);
         for (i = 0; i < g.mines; i++) {
-          var at = i + Math.floor(Math.random() * (spots.length - i)), pick = spots[at];
+          var at = i + Math.floor(g.rnd() * (spots.length - i)), pick = spots[at];
           spots[at] = spots[i]; spots[i] = pick;
           g.mine[pick] = 1;
         }
@@ -601,12 +706,12 @@
         }
         var best = -1, bestP = 2;
         risk.forEach(function (chance, cell) {
-          var score = chance + Math.random() * .001;
+          var score = chance + g.rnd() * .001;
           if (score < bestP) { bestP = score; best = cell; }
         });
         if (best < 0 || left / unknown < bestP - .02) {
           for (i = 0; i < 80; i++) {
-            var spot = Math.floor(Math.random() * g.n);
+            var spot = Math.floor(g.rnd() * g.n);
             if (g.view[spot] === MS_HIDDEN && !risk.has(spot)) { best = spot; break; }
           }
         }
@@ -617,7 +722,7 @@
         var g = ms, tries = 0, k;
         g.moved = false;
         while (g.todo.length < g.quota * 2 && g.active.length && tries++ < g.quota * 40) {
-          k = Math.floor(Math.random() * g.active.length);
+          k = Math.floor(g.rnd() * g.active.length);
           if (msBasic(g.active[k])) { g.active[k] = g.active[g.active.length - 1]; g.active.pop(); }
         }
         if (g.todo.length || g.moved) return;
@@ -629,20 +734,19 @@
       }
 
       function msTake(list) {
-        var k = Math.floor(Math.random() * list.length), cell = list[k];
+        var k = Math.floor(ms.rnd() * list.length), cell = list[k];
         list[k] = list[list.length - 1];
         list.pop();
         return cell;
       }
 
       function msStep() {
-        if (!ms) { resizeBg(); return; }
         var g = ms, now = performance.now(), quota = g.quota, did = 0, cell;
         if (g.over) {
           if (g.wiping || now - g.endAt < (g.over === 1 ? 3500 : 8000)) return;
           g.wiping = true;
           bgCv.classList.add('fade');
-          setTimeout(function () { msNew(); bgCv.classList.remove('fade'); }, 900);
+          setTimeout(function () { bgAttempt++; bgBegin(); bgCv.classList.remove('fade'); }, 900);
           return;
         }
         while (did < quota && g.bloom.length && !g.over) { cell = msTake(g.bloom); if (g.view[cell] === MS_HIDDEN) { msReveal(cell); did++; } }
@@ -706,12 +810,14 @@
       }
 
       function resizeBg() {
-        if (!window.innerWidth || !window.innerHeight) return; // Google Sites can load the frame at zero size
-        if (!ms || Math.abs(window.innerWidth / window.innerHeight - ms.aspect) / ms.aspect > .3) msNew();
-        if (reduce) {
+        if (!bgReady || !window.innerWidth || !window.innerHeight) return; // Google Sites can load the frame at zero size
+        var current = rd || ms;
+        if (!current) bgSync();
+        else if (Math.abs(window.innerWidth / window.innerHeight - current.aspect) / current.aspect > .3) bgBegin();
+        if (reduce && (ms || rd)) {
           var stop = performance.now() + 400;
-          while (!ms.over && performance.now() < stop) msStep();
-          msPaintAll();
+          while (performance.now() < stop) { if (rd) rdIterate(); else if (!ms.over) msStep(); else break; }
+          if (rd) rdPaint(); else msPaintAll();
         }
       }
 
@@ -1029,8 +1135,7 @@
       if (window.ResizeObserver) new ResizeObserver(resize).observe(cv);
       if (window.IntersectionObserver) new IntersectionObserver(function (e) { visible = e[e.length - 1].isIntersecting; }).observe(cv);
       resize();
-      resizeBg();
-      if (demo) window.__mutagenGame = function () { return ms; };
+      if (demo) { window.__mutagenGame = function () { return ms; }; window.__mutagenBg = function () { return { mode: bgMode, day: bgDay, pick: bgPick, rd: !!rd, ms: !!ms, F: rd && rd.F, attempt: bgAttempt }; }; }
       if (!reduce) {
         var lastTick = 0, frame = 0;
         (function tick(ts) {
@@ -1041,7 +1146,8 @@
           frame++;
           stepPlankton(dt);
           if (visible) { stepSim(ts, dt); draw(ts); }
-          if (frame % 2 === 0) msStep();
+          if (frame % 2 === 0) bgTick();
+          if (frame % 300 === 0 && bgReady) { updateTimeline(); bgSync(); }
           if (frame % 12 === 0) updateCount();
         })();
       }
@@ -1122,8 +1228,9 @@
         tlDay.textContent = past ? 'Day ' + v : dayText;
         tlDate.textContent = (past || today >= 1) ? fmtDay(v) : '';
         tlLive.hidden = !past;
-        tlNote.textContent = max > 1 ? (past ? 'Showing the plate as it was' : 'Drag to rewind') : (today < 1 ? 'The record opens on Day 1' : 'You can rewind once Day 2 arrives');
+        tlNote.textContent = max > 1 ? (past ? 'Plate and background from that day: ' + BG_NAMES[bgModeFor(v)] : 'Drag to rewind') : (today < 1 ? 'The record opens on Day 1' : 'You can rewind once Day 2 arrives');
         range.setAttribute('aria-valuetext', 'Day ' + v + ', ' + fmtDay(v) + (past ? '' : ', today'));
+        bgSyncSoon();
         caption.textContent = past ? 'Fig. 1 · Culture plate, Day ' + v + ' archive · tap a colony' : 'Fig. 1 · Culture plate, 37 °C · tap a colony';
       }
 
@@ -1364,16 +1471,29 @@
       setTimeout(function () { ownerProbe.remove(); }, 30000);
 
       /* ---- screensaver: hides the page and leaves the background running ---- */
-      var ssBtn = document.getElementById('ss-btn'), ssHint = document.getElementById('ss-hint'), ssTimer;
+      var ssBtn = document.getElementById('ss-btn'), ssHint = document.getElementById('ss-hint'), ssPick = document.getElementById('ss-pick'), ssTimer;
       function ssOn() { return document.body.classList.contains('saver'); }
       function ssShowHint() {
         ssHint.classList.add('on');
+        ssPick.classList.add('on');
         clearTimeout(ssTimer);
-        ssTimer = setTimeout(function () { ssHint.classList.remove('on'); }, 2500);
+        ssTimer = setTimeout(function () { ssHint.classList.remove('on'); ssPick.classList.remove('on'); }, 3500);
       }
+      function ssChoose(value) {
+        bgPick = value || null;
+        [].forEach.call(ssPick.querySelectorAll('button'), function (b) { b.classList.toggle('on', b.dataset.bg === value); });
+        bgSync();
+      }
+      ssPick.addEventListener('click', function (e) {
+        e.stopPropagation();
+        var button = e.target.closest('button');
+        if (button) { ssChoose(button.dataset.bg); ssShowHint(); }
+      });
       function ssExit() {
         document.body.classList.remove('saver');
         ssHint.classList.remove('on');
+        ssPick.classList.remove('on');
+        ssChoose('');
         ssBtn.focus({ preventScroll: true });
       }
       ssBtn.addEventListener('click', function (e) {
@@ -1382,8 +1502,13 @@
         ssShowHint();
       });
       document.addEventListener('click', function () { if (ssOn()) ssExit(); });
-      document.addEventListener('keydown', function () { if (ssOn()) ssExit(); });
+      document.addEventListener('keydown', function (e) {
+        if (ssOn() && e.key !== 'Tab' && !ssPick.contains(e.target)) ssExit();
+      });
       document.addEventListener('mousemove', function () { if (ssOn()) ssShowHint(); });
+
+      bgReady = true;
+      resizeBg();
 
       /* ---- carousel controls ---- */
       function step(dir) {
