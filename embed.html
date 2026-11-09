@@ -1240,7 +1240,7 @@
             show.textContent = 'Show on page';
             show.setAttribute('aria-label', 'Show where ' + it.text + ' is on the page');
             top.appendChild(show);
-            li.addEventListener('click', function (e) { if (!e.target.closest('.requested-by')) locate(it, li); });
+            li.addEventListener('click', function (e) { if (!e.target.closest('.requested-by')) locate(it, li, !e.detail); }); // detail is 0 for a keyboard press
           }
         }
 
@@ -1466,13 +1466,13 @@
         spotTip.classList.toggle('above', !below);
         spotTip.style.transform = 'translate(' + clamp(r.left + r.width / 2 - w / 2, 8, Math.max(8, vw - w - 8)) + 'px,' + (below ? r.bottom + gap + 8 : r.top - gap - h - 8) + 'px)';
       }
-      function pointAt(el, label) {
+      function pointAt(el, label, moveFocus) {
         var run = ++spotRun, start = performance.now();
         spotLabel.textContent = label;
         spotRing.style.borderRadius = getComputedStyle(el).borderRadius;
         spotRing.hidden = spotTip.hidden = false;
         el.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'center', inline: 'nearest' });
-        el.focus({ preventScroll: true });
+        if (moveFocus) el.focus({ preventScroll: true });
         (function follow(now) {
           if (run !== spotRun) return;
           if (now - start > 5000) { spotHide(); return; }
@@ -1480,9 +1480,9 @@
           requestAnimationFrame(follow);
         })(start);
       }
-      function locate(it, li) {
+      function locate(it, li, moveFocus) {
         var el = document.getElementById(it.pointsTo);
-        if (el && el.getClientRects().length) pointAt(el, 'Here it is');
+        if (el && el.getClientRects().length) pointAt(el, 'Here it is', moveFocus);
         else pointAt(li, 'Refresh the page to see this');
       }
       document.addEventListener('pointerdown', function (e) { if (!spotRing.hidden && !e.target.closest('.tag.locates')) spotHide(); });
