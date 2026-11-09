@@ -584,7 +584,8 @@
           fr.setAttribute('sandbox', 'allow-scripts');
           fr.setAttribute('loading', 'lazy');
           fr.title = it.text;
-          fr.src = it.widget;
+          var inlined = window.MUTAGEN_WIDGETS && window.MUTAGEN_WIDGETS[it.widget];
+          if (typeof inlined === 'string') fr.srcdoc = inlined; else fr.src = it.widget;
           top.appendChild(fr);
         }
 
@@ -741,6 +742,7 @@
       }
 
       if (demo) { render(demoItems(Math.min(60, +demo[1]))); }
+      else if (Array.isArray(window.MUTAGEN_DATA)) { render(window.MUTAGEN_DATA); } // Google Sites build: data is baked in
       else { updateTimeline(); load(); setInterval(load, 30000); }
 
       /* ---- carousel controls ---- */
