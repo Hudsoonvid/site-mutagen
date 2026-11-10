@@ -193,7 +193,12 @@
     .tag.ping { transform: translateY(-6px); box-shadow: 0 0 0 4px var(--c), 0 1.3rem 2.4rem rgb(45 60 40 / 20%); outline: 3px solid var(--c); outline-offset: 4px; }
     .tag.fresh { animation: dealin .7s cubic-bezier(.2,.9,.3,1.15) forwards, halo 1.8s ease-out 3; }
     .tag.has-widget { flex-basis: min(23rem, 88%); }
-    .tag.compact { flex-basis: min(13.5rem, 64%); align-self: flex-start; min-height: 0; gap: .55rem; padding: 1.15rem .85rem .75rem; }
+    /* small cards stack three high; tall widget cards span all three rows */
+    .grid { display: grid; grid-auto-flow: column dense; grid-auto-columns: max-content; grid-template-rows: repeat(3, auto); align-content: start; }
+    .tag { grid-row: span 3; width: min(17rem, 78vw); }
+    .tag.has-widget { width: min(23rem, 84vw); }
+    .tag.compact { grid-row: span 1; width: min(13.5rem, 64vw); align-self: start; min-height: 0; gap: .55rem; padding: 1.15rem .85rem .75rem; }
+    .grid .empty { grid-row: 1 / -1; width: min(60rem, 80vw); }
     .tag.compact .tag-text { margin: .4rem 2.2rem 0 0; font-size: 1.02rem; }
     .tag.compact .micro { top: .85rem; right: .6rem; width: 2rem; height: 2rem; }
     .tag.compact .requested-by { padding: .16rem .42rem; font-size: .64rem; }
