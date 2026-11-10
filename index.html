@@ -571,7 +571,7 @@
 
       function rdStep() {
         var start = performance.now(), done = 0;
-        while (done < 8 && performance.now() - start < 9) { rdIterate(); done++; }
+        while (done < 2 && performance.now() - start < 3) { rdIterate(); done++; }
         rd.age += done;
         rdPaint();
         if (rd.age > 60000) { bgAttempt++; bgBegin(); } // start a fresh pattern once it has settled
@@ -599,13 +599,27 @@
         for (var k = 0; k < 40; k++) flIterate();
       }
       function flSamp(a, gw, gh, x, y) {
-        x = ((x % gw) + gw) % gw; y = ((y % gh) + gh) % gh;
+        while (x < 0) x += gw; while (x >= gw) x -= gw; while (y < 0) y += gh; while (y >= gh) y -= gh; // cheaper than % on decimals
         var x0 = x | 0, y0 = y | 0, x1 = x0 + 1 === gw ? 0 : x0 + 1, y1 = y0 + 1 === gh ? 0 : y0 + 1, fx = x - x0, fy = y - y0;
         return (a[y0 * gw + x0] * (1 - fx) + a[y0 * gw + x1] * fx) * (1 - fy) + (a[y1 * gw + x0] * (1 - fx) + a[y1 * gw + x1] * fx) * fy;
       }
       function flIterate() {
-        var g = fl, gw = g.gw, gh = g.gh, K = g.K, cols = g.cols, rows = g.rows, u = g.u, v = g.v, u2 = g.u2, v2 = g.v2, p = g.p, p2 = g.p2, div = g.div, dt = .9, i, x, y;
-        var t = g.age * .012;
+        // The work is spread over three steps: the flow is solved on the first, and each step moves a third
+        // of the dye rows. At this slow pace the split can't be seen, and no single frame is heavy.
+        var g = fl, gw = g.gw, gh = g.gh, K = g.K, cols = g.cols, rows = g.rows, u = g.u, v = g.v, dt = .35, band = g.age % 3, i, x, y;
+        if (!g.XM) { // neighbour lookups, so the solver needs no % in its loops
+          g.XM = new Int32Array(gw); g.XP = new Int32Array(gw); g.YM = new Int32Array(gh); g.YP = new Int32Array(gh);
+          for (x = 0; x < gw; x++) { g.XM[x] = x ? x - 1 : gw - 1; g.XP[x] = x + 1 < gw ? x + 1 : 0; }
+          for (y = 0; y < gh; y++) { g.YM[y] = (y ? y - 1 : gh - 1) * gw; g.YP[y] = (y + 1 < gh ? y + 1 : 0) * gw; }
+        }
+        if (band === 0) flSolve(g, dt);
+        u = g.u; v = g.v;
+        flDye(g, band, dt * 3);
+        g.age++;
+      }
+      function flSolve(g, dt) {
+        var gw = g.gw, gh = g.gh, K = g.K, cols = g.cols, rows = g.rows, u = g.u, v = g.v, u2 = g.u2, v2 = g.v2, p = g.p, p2 = g.p2, div = g.div, XM = g.XM, XP = g.XP, YM = g.YM, YP = g.YP, i, x, y;
+        var t = g.age * .003;
         // move velocity along itself
         for (y = 0, i = 0; y < gh; y++) for (x = 0; x < gw; x++, i++) {
           u2[i] = flSamp(u, gw, gh, x - dt * u[i], y - dt * v[i]) * .999;
@@ -625,48 +639,52 @@
           }
           var dx0 = sx * K, dy0 = sy * K, dr = rad * K * .55;
           for (var py = Math.max(0, Math.floor(dy0 - dr)); py <= Math.min(rows - 1, dy0 + dr); py++) for (var px = Math.max(0, Math.floor(dx0 - dr)); px <= Math.min(cols - 1, dx0 + dr); px++) {
-            if ((px - dx0) * (px - dx0) + (py - dy0) * (py - dy0) < dr * dr) { var q = py * cols + px; g.dye[q] = Math.min(1.4, g.dye[q] + .45); }
+            if ((px - dx0) * (px - dx0) + (py - dy0) * (py - dy0) < dr * dr) { var q = py * cols + px; g.dye[q] = Math.min(1.4, g.dye[q] + .3); }
           }
         });
         u = g.u; v = g.v;
         // make the flow incompressible
-        for (y = 0, i = 0; y < gh; y++) { var ym = ((y + gh - 1) % gh) * gw, yp = ((y + 1) % gh) * gw, row = y * gw; for (x = 0; x < gw; x++, i++) { var xm = (x + gw - 1) % gw, xp = (x + 1) % gw; div[i] = -.5 * (u[row + xp] - u[row + xm] + v[yp + x] - v[ym + x]); } }
-        for (var it = 0; it < 18; it++) {
-          for (y = 0, i = 0; y < gh; y++) { var ym2 = ((y + gh - 1) % gh) * gw, yp2 = ((y + 1) % gh) * gw, row2 = y * gw; for (x = 0; x < gw; x++, i++) { var xm2 = (x + gw - 1) % gw, xp2 = (x + 1) % gw; p2[i] = (div[i] + p[row2 + xm2] + p[row2 + xp2] + p[ym2 + x] + p[yp2 + x]) * .25; } }
+        for (y = 0, i = 0; y < gh; y++) { var ym = YM[y], yp = YP[y], row = y * gw; for (x = 0; x < gw; x++, i++) div[i] = -.5 * (u[row + XP[x]] - u[row + XM[x]] + v[yp + x] - v[ym + x]); }
+        for (var it = 0; it < 10; it++) {
+          for (y = 0, i = 0; y < gh; y++) { var ym2 = YM[y], yp2 = YP[y], row2 = y * gw; for (x = 0; x < gw; x++, i++) p2[i] = (div[i] + p[row2 + XM[x]] + p[row2 + XP[x]] + p[ym2 + x] + p[yp2 + x]) * .25; }
           var tmp = p; p = p2; p2 = tmp;
         }
         g.p = p; g.p2 = p2;
-        for (y = 0, i = 0; y < gh; y++) { var ym3 = ((y + gh - 1) % gh) * gw, yp3 = ((y + 1) % gh) * gw, row3 = y * gw; for (x = 0; x < gw; x++, i++) { var xm3 = (x + gw - 1) % gw, xp3 = (x + 1) % gw; u[i] -= .5 * (p[row3 + xp3] - p[row3 + xm3]); v[i] -= .5 * (p[yp3 + x] - p[ym3 + x]); } }
-        // carry the dye along on the full-resolution grid
-        var dye = g.dye, dye2 = g.dye2, mx = cols - 1.001, my = rows - 1.001;
-        var gx0 = new Int32Array(cols), gx1 = new Int32Array(cols), gxf = new Float32Array(cols);
-        for (x = 0; x < cols; x++) { var sxx = x / K, a0 = sxx | 0; gx0[x] = a0; gx1[x] = a0 + 1 >= gw ? 0 : a0 + 1; gxf[x] = sxx - a0; }
-        for (y = 0, i = 0; y < rows; y++) {
+        for (y = 0, i = 0; y < gh; y++) { var ym3 = YM[y], yp3 = YP[y], row3 = y * gw; for (x = 0; x < gw; x++, i++) { u[i] -= .5 * (p[row3 + XP[x]] - p[row3 + XM[x]]); v[i] -= .5 * (p[yp3 + x] - p[ym3 + x]); } }
+      }
+      // carry a third of the dye rows along on the full-resolution grid, colouring each cell in the same pass
+      function flDye(g, band, dt) {
+        var gw = g.gw, gh = g.gh, K = g.K, cols = g.cols, rows = g.rows, u = g.u, v = g.v, x, y, i;
+        var dye = g.dye, dye2 = g.dye2, px = g.px, mx = cols - 1.001, my = rows - 1.001, sc = K * dt;
+        var gx0 = g.gx0, gx1 = g.gx1, gxf = g.gxf, ru = g.ru, rv = g.rv;
+        if (!gx0) {
+          gx0 = g.gx0 = new Int32Array(cols); gx1 = g.gx1 = new Int32Array(cols); gxf = g.gxf = new Float32Array(cols); ru = g.ru = new Float32Array(gw); rv = g.rv = new Float32Array(gw);
+          for (x = 0; x < cols; x++) { var sxx = x / K, a0 = sxx | 0; gx0[x] = a0; gx1[x] = a0 + 1 >= gw ? 0 : a0 + 1; gxf[x] = sxx - a0; }
+        }
+        var y0 = Math.floor(rows * band / 3), y1 = Math.floor(rows * (band + 1) / 3);
+        for (y = y0, i = y0 * cols; y < y1; y++) {
           var syy = y / K, b0 = Math.min(gh - 1, syy | 0), b1 = b0 + 1 >= gh ? 0 : b0 + 1, fy2 = syy - (syy | 0), r0 = b0 * gw, r1 = b1 * gw;
+          for (x = 0; x < gw; x++) { ru[x] = (u[r0 + x] + (u[r1 + x] - u[r0 + x]) * fy2) * sc; rv[x] = (v[r0 + x] + (v[r1 + x] - v[r0 + x]) * fy2) * sc; } // this row's flow, once
           for (x = 0; x < cols; x++, i++) {
             var fx2 = gxf[x], c0 = gx0[x], c1 = gx1[x];
-            var ux = ((u[r0 + c0] * (1 - fx2) + u[r0 + c1] * fx2) * (1 - fy2) + (u[r1 + c0] * (1 - fx2) + u[r1 + c1] * fx2) * fy2) * K * dt;
-            var uy = ((v[r0 + c0] * (1 - fx2) + v[r0 + c1] * fx2) * (1 - fy2) + (v[r1 + c0] * (1 - fx2) + v[r1 + c1] * fx2) * fy2) * K * dt;
-            var bx = x - ux, by = y - uy;
+            var bx = x - (ru[c0] + (ru[c1] - ru[c0]) * fx2), by = y - (rv[c0] + (rv[c1] - rv[c0]) * fx2);
             bx = bx < 0 ? 0 : bx > mx ? mx : bx; by = by < 0 ? 0 : by > my ? my : by;
             var ix = bx | 0, iy = by | 0, ex = bx - ix, ey = by - iy, q0 = iy * cols + ix;
-            dye2[i] = ((dye[q0] * (1 - ex) + dye[q0 + 1] * ex) * (1 - ey) + (dye[q0 + cols] * (1 - ex) + dye[q0 + cols + 1] * ex) * ey) * .9985;
+            var top = dye[q0] + (dye[q0 + 1] - dye[q0]) * ex, bot = dye[q0 + cols] + (dye[q0 + cols + 1] - dye[q0 + cols]) * ex;
+            var d = (top + (bot - top) * ey) * .995, tc = d * 480 | 0;
+            dye2[i] = d; px[i] = RD_PALETTE[tc > 255 ? 255 : tc < 0 ? 0 : tc];
           }
         }
-        g.dye = dye2; g.dye2 = dye;
-        g.age++;
+        if (band === 2) { g.dye = dye2; g.dye2 = dye; } // all rows moved: the new dye becomes current
+        g.dirty0 = y0; g.dirty1 = y1;
       }
-      function flPaint() {
-        var g = fl, dye = g.dye, px = g.px;
-        for (var i = 0; i < g.n; i++) {
-          var t = dye[i] * 400 | 0;
-          px[i] = RD_PALETTE[t < 0 ? 0 : t > 255 ? 255 : t];
-        }
-        bgCtx.putImageData(g.img, 0, 0);
+      function flPaint(all) { // flIterate already coloured the cells; draw only the rows that changed
+        if (all || fl.dirty1 === undefined) bgCtx.putImageData(fl.img, 0, 0);
+        else bgCtx.putImageData(fl.img, 0, 0, 0, fl.dirty0, fl.cols, fl.dirty1 - fl.dirty0);
       }
       function flStep() {
         flIterate(); flPaint();
-        if (fl.age > 7000) { bgAttempt++; bgBegin(); }
+        if (fl.age > 20000) { bgAttempt++; bgBegin(); }
       }
 
       /* ---- background: Perlin noise, drifting layers of smooth gradient noise drawn as a contour map,
@@ -679,88 +697,110 @@
         for (i = 255; i > 0; i--) { var j = Math.floor(r() * (i + 1)), t = base[i]; base[i] = base[j]; base[j] = t; }
         for (i = 0; i < 512; i++) g.perm[i] = base[i & 255];
         for (i = 0; i < 256; i++) { var an = r() * 6.2832; g.gx[i] = Math.cos(an); g.gy[i] = Math.sin(an); }
-        g.acc = new Float32Array(g.n);
+        g.ob = [new Float32Array(g.n), new Float32Array(g.n), new Float32Array(g.n)]; g.scratch = new Float32Array(g.n); g.next = 0;
         g.oct = [0, 1, 2].map(function (k) { var an = r() * 6.2832; return { freq: Math.pow(2, k) / (Math.max(g.cols, g.rows) / 3.2), amp: Math.pow(.5, k), ox: r() * 200, oy: r() * 200, dx: Math.cos(an) * (.0016 + k * .0012), dy: Math.sin(an) * (.0016 + k * .0012) }; });
         g.xi = new Int32Array(g.cols); g.pa = new Int32Array(g.cols); g.pb = new Int32Array(g.cols); g.xf = new Float32Array(g.cols); g.xu = new Float32Array(g.cols);
         g.skip = 0;
         pn = g;
         pnFrame();
       }
-      function pnFrame() {
-        var g = pn, cols = g.cols, rows = g.rows, perm = g.perm, gx = g.gx, gy = g.gy, acc = g.acc, xi = g.xi, pa = g.pa, pb = g.pb, xf = g.xf, xu = g.xu, x, y, k;
-        for (k = 0; k < g.oct.length; k++) {
+      // computes rows y0..y1 of one octave into acc
+      function pnOctave(k, y0, y1, acc) {
+        var g = pn, cols = g.cols, perm = g.perm, gx = g.gx, gy = g.gy, xi = g.xi, pa = g.pa, pb = g.pb, xf = g.xf, xu = g.xu, x, y;
+        {
           var o = g.oct[k], f = o.freq;
           for (x = 0; x < cols; x++) { var fx = x * f + o.ox, fl0 = Math.floor(fx), d = fx - fl0; xi[x] = fl0 & 255; pa[x] = perm[xi[x]]; pb[x] = perm[xi[x] + 1]; xf[x] = d; xu[x] = d * d * d * (d * (d * 6 - 15) + 10); }
-          for (y = 0; y < rows; y++) {
+          for (y = y0; y < y1; y++) {
             var fy = y * f + o.oy, fyl = Math.floor(fy), yf = fy - fyl, yi = fyl & 255, yu = yf * yf * yf * (yf * (yf * 6 - 15) + 10), yf1 = yf - 1, row = y * cols;
             for (x = 0; x < cols; x++) {
               var h00 = perm[pa[x] + yi], h10 = perm[pb[x] + yi], h01 = perm[pa[x] + yi + 1], h11 = perm[pb[x] + yi + 1], dx = xf[x], dx1 = dx - 1, u = xu[x];
               var n0 = (gx[h00] * dx + gy[h00] * yf) * (1 - u) + (gx[h10] * dx1 + gy[h10] * yf) * u;
               var n1 = (gx[h01] * dx + gy[h01] * yf1) * (1 - u) + (gx[h11] * dx1 + gy[h11] * yf1) * u;
               var val = (n0 * (1 - yu) + n1 * yu) * o.amp;
-              acc[row + x] = k === 0 ? val : acc[row + x] + val;
+              acc[row + x] = val;
             }
           }
-          o.ox += o.dx * 16; o.oy += o.dy * 16; // slow drift
         }
-        var px = g.px, line = msColor(150, 160, 118);
+      }
+      function pnDrift(k) { var o = pn.oct[k]; o.ox += o.dx * 4.5; o.oy += o.dy * 4.5; } // a slow, calm drift
+      function pnCompose() {
+        var g = pn, a = g.ob[0], b = g.ob[1], c = g.ob[2], px = g.px, line = msColor(150, 160, 118);
         for (var i = 0; i < g.n; i++) {
-          var t = .5 + acc[i] * .95, edge = t <= 0 || t >= 1; t = t < 0 ? 0 : t > 1 ? 1 : t;
+          var t = .5 + (a[i] + b[i] + c[i]) * .95, edge = t <= 0 || t >= 1; t = t < 0 ? 0 : t > 1 ? 1 : t;
           var band = t * 12;
-          px[i] = !edge && band - Math.floor(band) < .085 ? line : RD_PALETTE[(t * t * 255) | 0];
+          px[i] = !edge && band - (band | 0) < .085 ? line : RD_PALETTE[(t * t * 255) | 0];
         }
         bgCtx.putImageData(g.img, 0, 0);
         g.age++;
       }
-      function pnStep() { pn.skip = (pn.skip + 1) % 3; if (!pn.skip) pnFrame(); } // heavy, so it drifts a few times a second
+      function pnFrame() { for (var k = 0; k < 3; k++) { pnOctave(k, 0, pn.rows, pn.ob[k]); pnDrift(k); } pnCompose(); }
+      // Each step computes a third of one octave into a scratch buffer. When an octave is finished it swaps in
+      // and the picture is redrawn, so every step stays light and there are never seams.
+      function pnStep() {
+        var g = pn, k = g.next / 3 | 0, b = g.next % 3;
+        pnOctave(k, Math.floor(g.rows * b / 3), Math.floor(g.rows * (b + 1) / 3), g.scratch);
+        if (b === 2) { var t = g.ob[k]; g.ob[k] = g.scratch; g.scratch = t; pnDrift(k); pnCompose(); }
+        g.next = (g.next + 1) % 9;
+      }
 
-      /* ---- which background to show. The days cycle through every background in order,
-         so the record knows which one a day had, and each one starts from a random seed. ---- */
       /* ---- more grid backgrounds. Each one returns an object with step(), on the Minesweeper grid. ---- */
       var bx = null;
+      // runs a step-by-step simulation every `every` frames and fades each cell toward its new colour in between
+      function smoothStep(g, tgt, shown, every, advance) {
+        for (var i = 0; i < g.n; i++) g.px[i] = RD_PALETTE[0];
+        return function () {
+          if (g.age % every === 0) advance();
+          var px = g.px, n = g.n;
+          for (var j = 0; j < n; j++) {
+            var s = shown[j], t = tgt[j];
+            if (s !== t) { s = t > s ? s + ((t - s + 3) >> 2) : s - ((s - t + 3) >> 2); shown[j] = s; px[j] = RD_PALETTE[s]; }
+          }
+          bgCtx.putImageData(g.img, 0, 0);
+          g.age++;
+        };
+      }
       function wrapAt(g, x, y) { var c = g.cols, h = g.rows; x = x | 0; y = y | 0; x %= c; if (x < 0) x += c; y %= h; if (y < 0) y += h; return y * c + x; }
       var BX = {
         // Conway's Game of Life, with fading trails and fresh noise sprinkled in so it never dies out
         life: function (seed) {
-          var g = gridFor('life', seed), r = g.r, n = g.n, c = g.cols, h = g.rows, a = new Uint8Array(n), b = new Uint8Array(n), trail = new Uint8Array(n);
+          var g = gridFor('life', seed), r = g.r, n = g.n, c = g.cols, h = g.rows, a = new Uint8Array(n), b = new Uint8Array(n), trail = new Uint8Array(n), tgt = new Uint8Array(n), shown = new Uint8Array(n), gen = 0;
           function sprinkle(x0, y0, w, hh) { for (var y = y0; y < y0 + hh; y++) for (var x = x0; x < x0 + w; x++) a[wrapAt(g, x, y)] = r() < .35 ? 1 : 0; }
           sprinkle(0, 0, c, h);
-          g.step = function () {
+          function generation() {
             for (var y = 0, i = 0; y < h; y++) {
               var up = ((y + h - 1) % h) * c, dn = ((y + 1) % h) * c, row = y * c;
               for (var x = 0; x < c; x++, i++) {
                 var l = x ? x - 1 : c - 1, rr = x + 1 < c ? x + 1 : 0;
                 var s = a[up + l] + a[up + x] + a[up + rr] + a[row + l] + a[row + rr] + a[dn + l] + a[dn + x] + a[dn + rr];
                 var v = s === 3 || (s === 2 && a[i]) ? 1 : 0;
-                b[i] = v; trail[i] = v ? 255 : trail[i] > 5 ? trail[i] - 5 : 0;
-                g.px[i] = RD_PALETTE[v ? 255 : trail[i] >> 1];
+                b[i] = v; trail[i] = v ? 255 : trail[i] > 14 ? trail[i] - 14 : 0;
+                tgt[i] = v ? 255 : trail[i] >> 1;
               }
             }
             var t = a; a = b; b = t;
-            bgCtx.putImageData(g.img, 0, 0);
-            if (++g.age % 120 === 0) { var w = 10 + (r() * c * .12 | 0); sprinkle(r() * c | 0, r() * h | 0, w, w); }
-          };
+            if (++gen % 40 === 0) { var w = 10 + (r() * c * .12 | 0); sprinkle(r() * c | 0, r() * h | 0, w, w); }
+          }
+          g.step = smoothStep(g, tgt, shown, 6, generation); // a new generation every 6 steps, faded in between
           return g;
         },
         // cyclic cellular automaton: each cell is eaten by the next state around the wheel, which makes spirals
         cyclic: function (seed) {
           var g = gridFor('cyclic', seed), r = g.r, n = g.n, c = g.cols, h = g.rows, N = 14, a = new Uint8Array(n), b = new Uint8Array(n);
+          var tgt = new Uint8Array(n), shown = new Uint8Array(n);
           for (var i = 0; i < n; i++) a[i] = r() * N | 0;
-          g.step = function () {
-            for (var k = 0; k < 2; k++) {
-              for (var y = 0, i = 0; y < h; y++) {
-                var up = ((y + h - 1) % h) * c, dn = ((y + 1) % h) * c, row = y * c;
-                for (var x = 0; x < c; x++, i++) {
-                  var nx = a[i] + 1 === N ? 0 : a[i] + 1;
-                  b[i] = a[up + x] === nx || a[dn + x] === nx || a[row + (x ? x - 1 : c - 1)] === nx || a[row + (x + 1 < c ? x + 1 : 0)] === nx ? nx : a[i];
-                }
+          function generation() {
+            for (var y = 0, i = 0; y < h; y++) {
+              var up = ((y + h - 1) % h) * c, dn = ((y + 1) % h) * c, row = y * c;
+              for (var x = 0; x < c; x++, i++) {
+                var nx = a[i] + 1 === N ? 0 : a[i] + 1;
+                var v = a[up + x] === nx || a[dn + x] === nx || a[row + (x ? x - 1 : c - 1)] === nx || a[row + (x + 1 < c ? x + 1 : 0)] === nx ? nx : a[i];
+                b[i] = v; tgt[i] = v * 18;
               }
-              var t = a; a = b; b = t;
             }
-            for (var j = 0; j < n; j++) g.px[j] = RD_PALETTE[a[j] * 18];
-            bgCtx.putImageData(g.img, 0, 0);
-            if (++g.age > 5000) { bgAttempt++; bgBegin(); }
-          };
+            var t = a; a = b; b = t;
+            if (g.age > 20000) { bgAttempt++; bgBegin(); }
+          }
+          g.step = smoothStep(g, tgt, shown, 3, generation);
           return g;
         },
         // Langton's ants: each ant turns right on an empty cell and left on a marked one, flipping it as it goes
@@ -770,7 +810,7 @@
           for (var i = 0; i < n; i++) g.px[i] = RD_PALETTE[0];
           g.step = function () {
             ants.forEach(function (a) {
-              for (var s = 0; s < 300; s++) {
+              for (var s = 0; s < 40; s++) {
                 var j = a.y * g.cols + a.x;
                 a.d = (a.d + (on[j] ? 3 : 1)) & 3;
                 on[j] ^= 1;
@@ -781,7 +821,7 @@
               }
             });
             bgCtx.putImageData(g.img, 0, 0);
-            if (++g.age > 9000) { bgAttempt++; bgBegin(); }
+            if (++g.age > 40000) { bgAttempt++; bgBegin(); }
           };
           return g;
         },
@@ -800,16 +840,19 @@
           }
           for (var w0 = 0; w0 < W; w0++) spawn(w0);
           g.step = function () {
+            var last = (h - 1) * c;
             for (var w = 0; w < W; w++) {
-              for (var s = 0; s < 16; s++) {
-                var x = wx[w], y = wy[w];
-                if (occ[wrapAt(g, x + 1, y)] || occ[wrapAt(g, x - 1, y)] || occ[wrapAt(g, x, y + 1)] || occ[wrapAt(g, x, y - 1)]) { stick(y * c + x); spawn(w); break; }
+              var x = wx[w], y = wy[w];
+              for (var s = 0; s < 6; s++) {
+                var j = y * c + x;
+                if (occ[x + 1 < c ? j + 1 : j - x] || occ[x ? j - 1 : j + c - 1] || occ[y + 1 < h ? j + c : x] || occ[y ? j - c : last + x]) { stick(j); spawn(w); x = wx[w]; y = wy[w]; break; }
                 var m = r() * 4 | 0;
-                wx[w] = (x + (m === 0 ? 1 : m === 1 ? c - 1 : 0)) % c; wy[w] = (y + (m === 2 ? 1 : m === 3 ? h - 1 : 0)) % h;
+                if (m === 0) { if (++x === c) x = 0; } else if (m === 1) { if (--x < 0) x = c - 1; } else if (m === 2) { if (++y === h) y = 0; } else if (--y < 0) y = h - 1;
               }
+              wx[w] = x; wy[w] = y;
             }
             bgCtx.putImageData(g.img, 0, 0);
-            if (++g.age > 12000 || stuck > n * .3) { bgAttempt++; bgBegin(); }
+            if (++g.age > 40000 || stuck > n * .3) { bgAttempt++; bgBegin(); }
           };
           return g;
         },
@@ -817,15 +860,16 @@
         ripples: function (seed) {
           var g = gridFor('ripples', seed), r = g.r, n = g.n, c = g.cols, h = g.rows, a = new Float32Array(n), b = new Float32Array(n);
           g.step = function () {
-            if (r() < .25) { var cx = r() * c, cy = r() * h, rad = 2 + r() * 3; for (var dy = -rad; dy <= rad; dy++) for (var dx = -rad; dx <= rad; dx++) if (dx * dx + dy * dy <= rad * rad) a[wrapAt(g, cx + dx, cy + dy)] += 1.4; }
-            for (var k = 0; k < 2; k++) {
-              for (var y = 0, i = 0; y < h; y++) {
-                var up = ((y + h - 1) % h) * c, dn = ((y + 1) % h) * c, row = y * c;
-                for (var x = 0; x < c; x++, i++) b[i] = ((a[up + x] + a[dn + x] + a[row + (x ? x - 1 : c - 1)] + a[row + (x + 1 < c ? x + 1 : 0)]) * .5 - b[i]) * .992;
+            if (r() < .05) { var cx = r() * c, cy = r() * h, rad = 2 + r() * 3; for (var dy = -rad; dy <= rad; dy++) for (var dx = -rad; dx <= rad; dx++) if (dx * dx + dy * dy <= rad * rad) a[wrapAt(g, cx + dx, cy + dy)] += 1.4; }
+            var px = g.px; // one wave update a step, coloured in the same pass
+            for (var y = 0, i = 0; y < h; y++) {
+              var up = ((y + h - 1) % h) * c, dn = ((y + 1) % h) * c, row = y * c;
+              for (var x = 0; x < c; x++, i++) {
+                var nv = ((a[up + x] + a[dn + x] + a[row + (x ? x - 1 : c - 1)] + a[row + (x + 1 < c ? x + 1 : 0)]) * .5 - b[i]) * .994;
+                b[i] = nv; var v = 70 + nv * 260 | 0; px[i] = RD_PALETTE[v < 0 ? 0 : v > 255 ? 255 : v];
               }
-              var t = a; a = b; b = t;
             }
-            for (var j = 0; j < n; j++) { var v = 70 + a[j] * 260 | 0; g.px[j] = RD_PALETTE[v < 0 ? 0 : v > 255 ? 255 : v]; }
+            var t = a; a = b; b = t;
             bgCtx.putImageData(g.img, 0, 0);
             g.age++;
           };
@@ -833,40 +877,52 @@
         },
         // slime mold (Physarum): thousands of agents follow and lay down a chemical trail, forming vein networks
         slime: function (seed) {
-          var g = gridFor('slime', seed), r = g.r, n = g.n, c = g.cols, h = g.rows, A = Math.min(70000, n / 4 | 0);
+          var g = gridFor('slime', seed), r = g.r, n = g.n, c = g.cols, h = g.rows, A = Math.min(45000, n / 5 | 0);
           var ax = new Float32Array(A), ay = new Float32Array(A), ang = new Float32Array(A), tr = new Float32Array(n), tmp = new Float32Array(n);
-          var SA = .45, SD = Math.max(4, Math.min(c, h) * .02), TURN = .4;
+          var SA = .45, SD = Math.max(4, Math.min(c, h) * .02), TURN = .4, COS = new Float32Array(256), SIN = new Float32Array(256), TA = 256 / 6.2832;
+          for (var z = 0; z < 256; z++) { COS[z] = Math.cos(z / TA); SIN[z] = Math.sin(z / TA); } // angle lookup tables instead of trig per agent
           var spots = []; for (var q = 2 + (r() * 4 | 0); q > 0; q--) spots.push([c * (.15 + r() * .7), h * (.15 + r() * .7), Math.min(c, h) * (.06 + r() * .16)]);
           for (var i = 0; i < A; i++) { var sp = spots[i % spots.length], a0 = r() * 6.2832, d0 = Math.sqrt(r()) * sp[2]; ax[i] = (sp[0] + Math.cos(a0) * d0 + c) % c; ay[i] = (sp[1] + Math.sin(a0) * d0 + h) % h; ang[i] = a0 + Math.PI; }
+          var SAI = SA * TA, TI = TURN * TA;
+          function sense(x, y, a) {
+            var k = ((a % 256) + 256) & 255, sx = (x + COS[k] * SD) | 0, sy = (y + SIN[k] * SD) | 0;
+            if (sx < 0) sx += c; else if (sx >= c) sx -= c;
+            if (sy < 0) sy += h; else if (sy >= h) sy -= h;
+            return tr[sy * c + sx];
+          }
+          for (var i0 = 0; i0 < A; i0++) ang[i0] *= TA; // headings are kept in table units (256 per turn)
           g.step = function () {
-            for (var i = 0; i < A; i++) {
+            // a third of the agents move each step, which keeps the pace calm and the work small
+            for (var i = g.age % 3; i < A; i += 3) {
               var x = ax[i], y = ay[i], t = ang[i];
-              var f = tr[wrapAt(g, x + Math.cos(t) * SD, y + Math.sin(t) * SD)];
-              var lf = tr[wrapAt(g, x + Math.cos(t - SA) * SD, y + Math.sin(t - SA) * SD)];
-              var rt = tr[wrapAt(g, x + Math.cos(t + SA) * SD, y + Math.sin(t + SA) * SD)];
-              if (f < lf && f < rt) t += (r() < .5 ? -1 : 1) * TURN; else if (lf > rt) t -= TURN; else if (rt > lf) t += TURN;
-              x += Math.cos(t); y += Math.sin(t);
+              var f = sense(x, y, t), lf = sense(x, y, t - SAI), rt = sense(x, y, t + SAI);
+              if (f < lf && f < rt) t += (r() < .5 ? -1 : 1) * TI; else if (lf > rt) t -= TI; else if (rt > lf) t += TI;
+              var kk = ((t % 256) + 256) & 255;
+              x += COS[kk]; y += SIN[kk];
               if (x < 0) x += c; else if (x >= c) x -= c;
               if (y < 0) y += h; else if (y >= h) y -= h;
               ax[i] = x; ay[i] = y; ang[i] = t;
-              var j = (y | 0) * c + (x | 0); tr[j] = Math.min(tr[j] + 4, 40);
+              var j = (y | 0) * c + (x | 0); tr[j] = tr[j] < 36 ? tr[j] + 4 : 40;
             }
-            for (var yy = 0, k = 0; yy < h; yy++) {
-              var up = ((yy + h - 1) % h) * c, dn = ((yy + 1) % h) * c, row = yy * c;
-              for (var xx = 0; xx < c; xx++, k++) {
-                var l = xx ? xx - 1 : c - 1, rr = xx + 1 < c ? xx + 1 : 0;
-                var v = (tr[up + l] + tr[up + xx] + tr[up + rr] + tr[row + l] + tr[k] + tr[row + rr] + tr[dn + l] + tr[dn + xx] + tr[dn + rr]) / 9 * .9;
-                tmp[k] = v; var p = v * 22 | 0; g.px[k] = RD_PALETTE[p > 255 ? 255 : p];
-              }
+            // spread and fade a third of the trail each step: a 3x3 blur done as two cheap passes, coloured in the second
+            var px = g.px, band = g.age % 3, y0 = Math.floor(h * band / 3), y1 = Math.floor(h * (band + 1) / 3), yy, xx, k;
+            for (yy = y0 - 1; yy <= y1; yy++) {
+              var ry = yy < 0 ? yy + h : yy >= h ? yy - h : yy, row = ry * c;
+              for (xx = 0, k = row; xx < c; xx++, k++) tmp[k] = tr[row + (xx ? xx - 1 : c - 1)] + tr[k] + tr[row + (xx + 1 < c ? xx + 1 : 0)];
             }
-            var s = tr; tr = tmp; tmp = s;
-            bgCtx.putImageData(g.img, 0, 0);
-            if (++g.age > 8000) { bgAttempt++; bgBegin(); }
+            for (yy = y0, k = y0 * c; yy < y1; yy++) {
+              var up = (yy ? yy - 1 : h - 1) * c, dn = (yy + 1 < h ? yy + 1 : 0) * c;
+              for (xx = 0; xx < c; xx++, k++) { var v = (tmp[up + xx] + tmp[k] + tmp[dn + xx]) * .0983; tr[k] = v; var p = v * 22 | 0; px[k] = RD_PALETTE[p > 255 ? 255 : p]; } // .0983 = .96 cubed / 9
+            }
+            bgCtx.putImageData(g.img, 0, 0, 0, y0, c, y1 - y0); // only the rows that changed
+            if (++g.age > 30000) { bgAttempt++; bgBegin(); }
           };
           return g;
         }
       };
 
+      /* ---- which background to show. The days cycle through every background in order,
+         so the record knows which one a day had, and each one starts from a random seed. ---- */
       var BG_NAMES = { mines: 'Minesweeper', rd: 'reaction diffusion', fluid: 'fluid simulation', noise: 'Perlin noise', slime: 'slime mold', life: 'Game of Life', cyclic: 'cyclic automaton spirals', ripples: 'ripples', dla: 'crystal growth', ants: "Langton's ants" };
       var BG_CYCLE = ['mines', 'rd', 'fluid', 'noise', 'slime', 'life', 'cyclic', 'ripples', 'dla', 'ants'];
       var bgReady = false, bgMode = null, bgDay = null, bgPick = null, bgAttempt = 0, bgSoon;
@@ -923,7 +979,7 @@
         bgCv.width = cols;
         bgCv.height = rows;
         var img = bgCtx.createImageData(cols, rows);
-        ms = { rnd: rng(hash('mines' + seed)), cols: cols, rows: rows, aspect: w / h, n: n, nb: nb, img: img, px: new Uint32Array(img.data.buffer), view: new Int8Array(n).fill(MS_HIDDEN), filled: new Uint8Array(n), mine: null, mines: Math.round(n * MS_DENSITY), flags: 0, open: 0, born: new Float64Array(n), mark: new Int32Array(n), stamp: 0, bloom: [], todo: [], active: [], fresh: [], scan: 0, moved: false, quota: Math.round(clamp(n / 1100, 5, 260)), over: 0, endAt: 0, wiping: false };
+        ms = { rnd: rng(hash('mines' + seed)), cols: cols, rows: rows, aspect: w / h, n: n, nb: nb, img: img, px: new Uint32Array(img.data.buffer), view: new Int8Array(n).fill(MS_HIDDEN), filled: new Uint8Array(n), mine: null, mines: Math.round(n * MS_DENSITY), flags: 0, open: 0, born: new Float64Array(n), mark: new Int32Array(n), stamp: 0, bloom: [], todo: [], active: [], fresh: [], scan: 0, moved: false, quota: Math.round(clamp(n / 4400, 2, 65)), over: 0, endAt: 0, wiping: false };
         msPaintAll();
         msReveal(Math.floor(ms.rnd() * rows * .6 + rows * .2) * cols + Math.floor(ms.rnd() * cols * .6 + cols * .2));
       }
@@ -1171,7 +1227,7 @@
           else if (bx) { while (performance.now() < stop) bx.step(); }
           else {
             while (performance.now() < stop) { if (rd) rdIterate(); else if (fl) flIterate(); else if (!ms.over) msStep(); else break; }
-            if (rd) rdPaint(); else if (fl) flPaint(); else msPaintAll();
+            if (rd) rdPaint(); else if (fl) flPaint(true); else msPaintAll();
           }
         }
       }
@@ -1491,18 +1547,31 @@
       if (window.ResizeObserver) new ResizeObserver(resize).observe(cv);
       if (window.IntersectionObserver) new IntersectionObserver(function (e) { visible = e[e.length - 1].isIntersecting; }).observe(cv);
       resize();
-      if (demo) { window.__mutagenGame = function () { return ms; }; window.__mutagenBg = function () { return { mode: bgMode, day: bgDay, pick: bgPick, rd: !!rd, ms: !!ms, F: rd && rd.F, attempt: bgAttempt }; }; }
+      if (demo) { window.__mutagenGame = function () { return ms; }; window.__mutagenBg = function () { return { mode: bgMode, day: bgDay, pick: bgPick, rd: !!rd, ms: !!ms, F: rd && rd.F, attempt: bgAttempt }; };
+        // demo-only timing: average milliseconds per background frame, after a warm-up
+        window.__mutagenBench = function (mode, n) {
+          bgPick = mode; bgMode = mode; bgBegin();
+          var step = bgTick;
+          for (var w = 0; w < 10; w++) step();
+          var t = performance.now(), worst = 0;
+          for (var i = 0; i < n; i++) { var s = performance.now(); step(); worst = Math.max(worst, performance.now() - s); }
+          return { mode: mode, ms: +((performance.now() - t) / n).toFixed(2), worst: +worst.toFixed(2), cells: bgCv.width * bgCv.height };
+        };
+      }
       if (!reduce) {
-        var lastTick = 0, frame = 0;
+        var lastTick = 0, frame = 0, bgLast = 0, bgAcc = 0;
         (function tick(ts) {
           requestAnimationFrame(tick);
-          if (!ts || document.hidden || ts - lastTick < 31) return;
+          if (!ts || document.hidden) return;
+          // background: a steady 60 slow steps a second whatever the screen's refresh rate
+          if (bgLast) { bgAcc = Math.min(bgAcc + ts - bgLast, 34); while (bgAcc >= 16.6) { bgTick(); bgAcc -= 16.6; } }
+          bgLast = ts;
+          if (ts - lastTick < 31) return;
           var dt = lastTick ? Math.min(.05, (ts - lastTick) / 1000) : .03;
           lastTick = ts;
           frame++;
           stepPlankton(dt);
           if (visible) { stepSim(ts, dt); draw(ts); }
-          if (frame % 2 === 0) bgTick();
           if (frame % 300 === 0 && bgReady) { updateTimeline(); bgSync(); }
           if (frame % 12 === 0) updateCount();
         })();
