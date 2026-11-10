@@ -6,7 +6,7 @@ html,body{margin:0;height:100%;background:#f4efdc;font-family:system-ui,sans-ser
 #bar{display:flex;gap:4px;padding:4px;flex-wrap:wrap;align-items:center}
 button{background:#5b7a3a;color:#f4efdc;border:0;border-radius:6px;padding:4px 7px;font-size:12px;cursor:pointer;min-height:26px}
 button.on{background:#2f4a2a}
-#c{flex:1;min-height:0;width:100%;touch-action:none;display:block}
+#c{flex:1;min-height:0;width:100%;touch-action:none;display:block;background:radial-gradient(circle at 50% 40%,#fbf8ea,#e4ddc0)}
 #info{font-size:11px;padding:2px 6px 4px;min-height:14px}
 </style></head><body><div id="w">
 <div id="bar"></div><canvas id="c"></canvas><div id="info"></div></div>
@@ -21,38 +21,54 @@ const MOLS={
 };
 const COL={H:"#f4efdc",O:"#c0392b",C:"#444",N:"#3b6fb6"},RAD={H:.28,O:.45,C:.5,N:.47};
 const cv=document.getElementById("c"),g=cv.getContext("2d"),bar=document.getElementById("bar"),info=document.getElementById("info");
-let cur=null,mixed=false,ax=.4,ay=.6,drag=null,items=[];
-function fit(){const r=cv.getBoundingClientRect(),d=devicePixelRatio||1;cv.width=r.width*d;cv.height=r.height*d}
-addEventListener("resize",fit);
+let mode="show",ax=.4,ay=.6,drag=null,items=[],rx=0,t0=0;
+function fit(){const r=cv.getBoundingClientRect(),d=devicePixelRatio||1;if(cv.width!==Math.round(r.width*d)||cv.height!==Math.round(r.height*d)){cv.width=r.width*d;cv.height=r.height*d}}
 function btn(t,f){const b=document.createElement("button");b.textContent=t;b.onclick=()=>{f();[...bar.children].forEach(x=>x.classList.remove("on"));b.classList.add("on")};bar.appendChild(b);return b}
-function show(n){mixed=false;cur=n;const m=MOLS[n];items=[{id:0,m,p:[0,0,0],v:[0,0,0]}];info.textContent=m.note}
-function mix(){mixed=true;cur=null;items=[];const k=Object.keys(MOLS);for(let i=0;i<10;i++){const m=MOLS[k[i%k.length]];items.push({id:i,m,p:[Math.random()*6-3,Math.random()*4-2,Math.random()*4-2],v:[(Math.random()-.5)*.02,(Math.random()-.5)*.02,(Math.random()-.5)*.02]})}info.textContent="Molecules drifting and tumbling in a mix. Drag to rotate."}
+const rnd=s=>(Math.random()-.5)*s;
+function show(n){mode="show";const m=MOLS[n];items=[{id:0,m,p:[0,0,0],v:[0,0,0]}];info.textContent=m.note+" Drag to rotate in 3D."}
+function mix(){mode="mix";items=[];const k=Object.keys(MOLS);for(let i=0;i<10;i++)items.push({id:i,m:MOLS[k[i%k.length]],p:[rnd(6),rnd(4),rnd(4)],v:[rnd(.02),rnd(.02),rnd(.02)]});info.textContent="Molecules drifting and tumbling in 3D. Drag to rotate."}
+function react(){mode="react";rx=0;t0=performance.now();items=[];
+for(let i=0;i<2;i++)items.push({id:i,m:MOLS["Hydrogen H2"],s:[-3+i*.1,-1.2+i*2.4,rnd(1)],e:[-1.3+i*2.6,.6-i*1.2,0]});
+items.push({id:2,m:MOLS["Oxygen O2"],s:[3,0,rnd(1)],e:[0,0,0]});
+info.textContent="2 H2 + O2 collide, then rearrange into 2 H2O. Atoms are never lost, only regrouped."}
 Object.keys(MOLS).forEach(n=>btn(n,()=>show(n)));
-btn("Mix them",mix);
+btn("Mix them",mix);btn("React: H2 + O2",react);
 bar.children[0].click();
 cv.onpointerdown=e=>{drag=[e.clientX,e.clientY];cv.setPointerCapture(e.pointerId)};
 cv.onpointerup=()=>drag=null;
 cv.onpointermove=e=>{if(!drag)return;ay+=(e.clientX-drag[0])*.01;ax+=(e.clientY-drag[1])*.01;drag=[e.clientX,e.clientY]};
 function rot(p,a,b){let[x,y,z]=p;let c=Math.cos(b),s=Math.sin(b);[x,z]=[x*c+z*s,-x*s+z*c];c=Math.cos(a);s=Math.sin(a);[y,z]=[y*c-z*s,y*s+z*c];return[x,y,z]}
 function frame(t){
-fit();const W=cv.width,H=cv.height,S=Math.min(W,H)/(mixed?8:4.2);
+fit();const W=cv.width,H=cv.height,S=Math.min(W,H)/(mode==="show"?4.2:7);
 g.clearRect(0,0,W,H);
 if(!drag)ay+=.006;
-const list=[];
+const list=[],draw=[];
+// 3D floor grid for depth
+for(let i=-3;i<=3;i++)for(let k=0;k<2;k++){const a=k?[i,2.4,-3]:[-3,2.4,i],b=k?[i,2.4,3]:[3,2.4,i];
+const A=rot(a,ax,ay),B=rot(b,ax,ay),fa=6/(6+A[2]),fb=6/(6+B[2]);
+draw.push({z:1e3,fn:()=>{g.strokeStyle="rgba(91,122,58,.25)";g.lineWidth=1;g.beginPath();g.moveTo(W/2+A[0]*S*fa,H/2+A[1]*S*fa);g.lineTo(W/2+B[0]*S*fb,H/2+B[1]*S*fb);g.stroke()}})}
+const prog=mode==="react"?Math.min(1,(t-t0)/3500):0,formed=prog>=1;
+if(mode==="react"&&formed&&!items.water){items.water=1;items.length=0;
+for(let i=0;i<2;i++)items.push({id:i,m:MOLS["Water H2O"],p:[-1+i*2,0,0],v:[0,0,0]});}
 items.forEach((it,i)=>{
-if(mixed){for(let k=0;k<3;k++){it.p[k]+=it.v[k];const lim=k==0?3.2:2.2;if(Math.abs(it.p[k])>lim)it.v[k]*=-1}}
+if(mode==="mix"){for(let k=0;k<3;k++){it.p[k]+=it.v[k];const lim=k==0?3.2:2.2;if(Math.abs(it.p[k])>lim)it.v[k]*=-1}}
+let p=it.p;
+if(mode==="react"&&it.s){const e=Math.min(1,prog*1.4);p=it.s.map((v,k)=>v+(it.e[k]-v)*e*e*(3-2*e));}
 const sp=t/1000*(.6+i*.13);
 it.m.atoms.forEach((a,j)=>{
-let q=rot([a[1],a[2],a[3]],sp*.5,sp);q=[q[0]+it.p[0],q[1]+it.p[1],q[2]+it.p[2]];
+let q=rot([a[1],a[2],a[3]],sp*.5,sp);q=[q[0]+p[0],q[1]+p[1],q[2]+p[2]];
 q=rot(q,ax,ay);const f=6/(6+q[2]);
-list.push({x:W/2+q[0]*S*f,y:H/2+q[1]*S*f,z:q[2],r:RAD[a[0]]*S*f*(mixed?.9:1),e:a[0],it,j,q,f})});
+list.push({x:W/2+q[0]*S*f,y:H/2+q[1]*S*f,z:q[2],r:RAD[a[0]]*S*f,e:a[0],it,j,f})});
 });
 const pos=new Map();list.forEach(a=>pos.set(a.it.id+"|"+a.j,a));
-const draw=[];
-list.forEach(a=>draw.push({z:a.z,fn:()=>{const gr=g.createRadialGradient(a.x-a.r*.3,a.y-a.r*.3,a.r*.1,a.x,a.y,a.r);gr.addColorStop(0,"#fff");gr.addColorStop(.25,COL[a.e]);gr.addColorStop(1,"#1d2b1a");g.fillStyle=gr;g.beginPath();g.arc(a.x,a.y,a.r,0,7);g.fill()}}));
+list.forEach(a=>draw.push({z:a.z,fn:()=>{
+g.fillStyle="rgba(47,74,42,.12)";g.beginPath();g.ellipse(a.x,a.y+a.r*1.1,a.r*.9,a.r*.3,0,0,7);g.fill();
+const gr=g.createRadialGradient(a.x-a.r*.35,a.y-a.r*.35,a.r*.1,a.x,a.y,a.r);gr.addColorStop(0,"#fff");gr.addColorStop(.3,COL[a.e]);gr.addColorStop(1,"#1d2b1a");
+g.globalAlpha=Math.max(.55,Math.min(1,1-a.z*.08));g.fillStyle=gr;g.beginPath();g.arc(a.x,a.y,a.r,0,7);g.fill();g.globalAlpha=1}}));
 items.forEach(it=>it.m.bonds.forEach(b=>{const A=pos.get(it.id+"|"+b[0]),B=pos.get(it.id+"|"+b[1]);if(!A||!B)return;
 draw.push({z:(A.z+B.z)/2,fn:()=>{g.strokeStyle="#8a9a7a";g.lineCap="round";const n=b[2]||1,dx=B.y-A.y,dy=A.x-B.x,l=Math.hypot(dx,dy)||1;for(let k=0;k<n;k++){const o=(k-(n-1)/2)*S*.1*A.f;g.lineWidth=Math.max(2,S*.09*A.f);g.beginPath();g.moveTo(A.x+dx/l*o,A.y+dy/l*o);g.lineTo(B.x+dx/l*o,B.y+dy/l*o);g.stroke()}}})}));
 draw.sort((a,b)=>b.z-a.z).forEach(d=>d.fn());
+g.fillStyle="#2f4a2a";g.font=Math.max(10,H*.045)+"px system-ui";g.fillText("3D",8,Math.max(14,H*.06));
 requestAnimationFrame(frame)}
 requestAnimationFrame(frame);
 </script></body></html>

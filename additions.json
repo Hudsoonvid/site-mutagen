@@ -26,6 +26,7 @@
     "requestedBy": "Hudson S.",
     "submittedAt": "2026-11-10T08:42:04",
     "addedAt": "2026-11-10T08:42:49",
+    "prompt": "3D molecule simulator: see oxygen, hydrogen and more mix. Use opus 5.5 for this and make it3d so I know you did",
     "widget": "widgets/molecule-sim.html"
   },
   {
