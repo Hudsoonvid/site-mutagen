@@ -20,5 +20,12 @@
     "submittedAt": "2026-11-09T06:43:10",
     "addedAt": "2026-11-09T06:43:54",
     "pointsTo": "dark-btn"
+  },
+  {
+    "text": "3D molecule simulator: see oxygen, hydrogen and more mix",
+    "requestedBy": "Hudson S.",
+    "submittedAt": "2026-11-10T08:42:04",
+    "addedAt": "2026-11-10T08:42:49",
+    "widget": "widgets/molecule-sim.html"
   }
 ]
