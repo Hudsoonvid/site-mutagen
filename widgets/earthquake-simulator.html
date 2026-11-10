@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Earthquake simulator</title>
+<style>
+html,body{margin:0;height:100%;background:#f4efdf;color:#2f4a2a;font-family:system-ui,sans-serif}
+body{display:flex;flex-direction:column;gap:.4rem;padding:.5rem;box-sizing:border-box}
+#stage{flex:1;min-height:0;position:relative;overflow:hidden;border:2px solid #5d7a45;border-radius:8px;background:#e9e2c8}
+canvas{width:100%;height:100%;display:block}
+.row{display:flex;gap:.5rem;align-items:center;font-size:.8rem}
+input{flex:1;accent-color:#5d7a45;min-width:0}
+button{background:#5d7a45;color:#f4efdf;border:0;border-radius:6px;padding:.4rem .8rem;font-weight:700;cursor:pointer}
+button:focus-visible,input:focus-visible{outline:2px solid #2f4a2a}
+</style></head><body>
+<div id="stage"><canvas id="c"></canvas></div>
+<div class="row"><label for="m">Magnitude <b id="v">5.0</b></label><input id="m" type="range" min="2" max="9" step="0.1" value="5"><button id="go" type="button">Quake</button></div>
+<script>
+var c=document.getElementById('c'),x=c.getContext('2d'),m=document.getElementById('m'),v=document.getElementById('v'),W,H,t=0,amp=0;
+function rs(){var r=c.getBoundingClientRect();W=c.width=r.width;H=c.height=r.height}
+addEventListener('resize',rs);rs();
+m.oninput=function(){v.textContent=(+m.value).toFixed(1)};
+function go(){amp=Math.pow(2,+m.value-2)/8;t=0}
+document.getElementById('go').onclick=go;
+var bl=[];for(var i=0;i<7;i++)bl.push({h:.25+((i*37)%10)/25,w:.07});
+function f(){
+ x.clearRect(0,0,W,H);
+ var s=amp*Math.exp(-t/90)*Math.sin(t/1.7),g=H*.78,ww=W/8;
+ x.fillStyle='#8a7a55';x.fillRect(0,g,W,H-g);
+ x.save();x.translate(s*Math.min(6,W/40),0);
+ x.fillStyle='#8a7a55';x.fillRect(-20,g,W+40,H-g);
+ bl.forEach(function(b,i){
+  var bh=b.h*(g-8),bx=ww*(i+.5)-ww*.35,tilt=s*bh*.004*(1+b.h);
+  x.save();x.translate(bx+ww*.35,g);x.rotate(tilt);
+  x.fillStyle=amp>3&&i%3==0&&t>20?'#b05a4a':'#5d7a45';x.fillRect(-ww*.35,-bh,ww*.7,bh);
+  x.fillStyle='#f4efdf';for(var j=1;j<bh/16;j++){x.fillRect(-ww*.2,-j*16,ww*.15,7);x.fillRect(ww*.05,-j*16,ww*.15,7)}
+  x.restore()});
+ x.restore();
+ x.fillStyle='#2f4a2a';x.font='12px system-ui';x.fillText(amp>.01?'shaking...':'press Quake',8,16);
+ t++;if(amp>0&&amp*Math.exp(-t/90)<.01)amp=0;
+ requestAnimationFrame(f)}
+f();
+</script></body></html>
