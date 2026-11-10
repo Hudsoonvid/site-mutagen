@@ -73,6 +73,9 @@
     .dash-bar a { color: #d7e8c8; }
     .dash-bar button { min-height: 2rem; padding: .2rem .8rem; border: 0; border-radius: .35rem; background: #fff; color: var(--green-d); font: inherit; cursor: pointer; }
     #dash-frame { flex: 1; width: 100%; border: 0; background: var(--bg); }
+    .dash-bar { padding-top: max(.5rem, env(safe-area-inset-top)); padding-left: max(1rem, env(safe-area-inset-left)); padding-right: max(1rem, env(safe-area-inset-right)); }
+    @media (pointer: coarse) { .dash-bar button { min-height: 2.75rem; padding: .3rem 1.1rem; } .dash-bar a { padding: .6rem 0; } }
+    @media (max-width: 30rem) { .dash-bar { gap: .75rem; } .dash-bar span { display: none; } .dash-bar a { margin-right: auto; } }
     .about { margin: 0 0 clamp(.8rem, 2vw, 1.1rem); animation: rise .3s cubic-bezier(.2,.8,.2,1) both; padding: clamp(1.1rem, 3vw, 1.6rem) clamp(1.25rem, 4vw, 2.2rem); background: var(--paper); border: 1px solid var(--line); border-radius: 1.1rem; line-height: 1.6; color: var(--muted); }
     .about h2 { margin: 0 0 .5rem; font-family: var(--serif); font-size: clamp(1.35rem, 3.4vw, 1.75rem); font-weight: 600; color: var(--green-d); }
     .about h3 { margin: 1rem 0 .3rem; font-size: .95rem; color: var(--green-d); }

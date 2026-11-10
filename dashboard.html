@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Mutagen control room</title>
   <style>
     :root { --ink: #1d2a1f; --muted: #56624f; --line: #cfd6bb; --paper: #fffef6; --bg: #e9eddc; --green: #2d5233; font-family: system-ui, -apple-system, "Segoe UI", sans-serif; color: var(--ink); }
@@ -37,6 +38,40 @@
     .row { display: flex; flex-wrap: wrap; gap: .45rem; margin-top: .55rem; }
     .meta { color: var(--muted); font-size: .76rem; }
     .empty { color: var(--muted); font-size: .86rem; }
+    html { -webkit-text-size-adjust: 100%; }
+    main { padding-left: max(1rem, env(safe-area-inset-left)); padding-right: max(1rem, env(safe-area-inset-right)); padding-bottom: max(3rem, env(safe-area-inset-bottom)); }
+    td.why:empty { display: none; }
+
+    /* touch screens (phones and iPads): finger-sized buttons, and 16px text in fields so iOS doesn't zoom in */
+    @media (pointer: coarse) {
+      button { min-height: 2.75rem; padding: .45rem .9rem; font-size: .9rem; }
+      input, textarea { font-size: 16px; padding: .55rem .6rem; }
+      button:hover { background: #fff; }
+      button.on:hover, button.main:hover { background: var(--green); }
+    }
+
+    /* phones: tables turn into stacked cards, stats and filters become even grids */
+    @media (max-width: 40rem) {
+      main { padding-top: .9rem; }
+      h1 { font-size: 1.45rem; }
+      h2 { font-size: 1.15rem; }
+      section { padding: .85rem; border-radius: .6rem; }
+      .stats { display: grid; grid-template-columns: repeat(2, 1fr); }
+      .filters { display: grid; grid-template-columns: repeat(4, 1fr); }
+      .filters button { padding-left: .2rem; padding-right: .2rem; }
+      .scroll { overflow: visible; margin-top: .5rem; }
+      table, tbody, tr, td { display: block; }
+      thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+      tr { display: flex; flex-wrap: wrap; align-items: center; gap: .25rem .5rem; padding: .75rem 0; border-bottom: 1px solid var(--line); }
+      tr:last-child { border-bottom: 0; }
+      td { padding: 0; border: 0; }
+      td.when, td.who, td.act { font-size: .76rem; color: var(--muted); }
+      td.who::before, td.act::before { content: '· '; }
+      td.st { margin-left: auto; }
+      td.req, td.tgt, td.empty { order: 1; flex-basis: 100%; font-size: .93rem; }
+      td.why { order: 2; flex-basis: 100%; font-size: .78rem; color: var(--muted); }
+      .row { display: grid; grid-template-columns: 1fr 1fr; }
+    }
   </style>
 </head>
 <body>
@@ -95,9 +130,9 @@
     if (!list.length) { var tr = el('tr'); var td = cell(tr, 'Nothing here.', 'empty'); td.colSpan = 5; body.appendChild(tr); return; }
     list.forEach(function (r) {
       var tr = el('tr');
-      cell(tr, r.when, 'when'); cell(tr, r.who, 'who'); cell(tr, r.text);
-      var st = cell(tr, ''); st.appendChild(el('span', 'badge ' + (r.status === 'On site' ? 'site' : r.status === 'Removed' ? 'removed' : 'waiting'), r.status));
-      cell(tr, r.reason || '');
+      cell(tr, r.when, 'when'); cell(tr, r.who, 'who'); cell(tr, r.text, 'req');
+      var st = cell(tr, '', 'st'); st.appendChild(el('span', 'badge ' + (r.status === 'On site' ? 'site' : r.status === 'Removed' ? 'removed' : 'waiting'), r.status));
+      cell(tr, r.reason || '', 'why');
       body.appendChild(tr);
     });
   }
@@ -128,7 +163,7 @@
       var del = el('button', 'danger', 'Delete');
       del.onclick = function () {
         if (del.dataset.sure) { send({ action: 'delete', target: it.submittedAt }, del); return; }
-        del.dataset.sure = '1'; del.textContent = 'Click again to delete';
+        del.dataset.sure = '1'; del.textContent = (matchMedia('(pointer: coarse)').matches ? 'Tap' : 'Click') + ' again to delete';
         setTimeout(function () { delete del.dataset.sure; del.textContent = 'Delete'; }, 4000);
       };
       [rename, reprompt, regen, del].forEach(function (b) { row.appendChild(b); });
@@ -143,8 +178,8 @@
     if (!list.length) { var tr = el('tr'); var td = cell(tr, 'No actions yet.', 'empty'); td.colSpan = 4; body.appendChild(tr); return; }
     list.forEach(function (c) {
       var tr = el('tr');
-      cell(tr, c.when, 'when'); cell(tr, c.action); cell(tr, c.name || c.targetName || '');
-      var st = cell(tr, ''); st.appendChild(el('span', 'badge ' + (c.done ? 'site' : 'waiting'), c.done ? 'Done' : 'Working'));
+      cell(tr, c.when, 'when'); cell(tr, c.action, 'act'); cell(tr, c.name || c.targetName || '', 'tgt');
+      var st = cell(tr, '', 'st'); st.appendChild(el('span', 'badge ' + (c.done ? 'site' : 'waiting'), c.done ? 'Done' : 'Working'));
       body.appendChild(tr);
     });
   }
