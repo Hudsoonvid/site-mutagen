@@ -282,7 +282,7 @@
 
     <section class="about" id="about-panel" aria-label="About this project" hidden>
       <h2>About this project</h2>
-      <p>Mutagen is a student coding and biology project by Hudson S. Classmates suggest small ideas, and approved ones are added to this page. The dish is a simple computer model of how bacteria grow, divide and mutate. The background switches each day between a program solving a Minesweeper board using only the clues a player can see, and a reaction-diffusion simulation, the math behind patterns like coral and animal spots.</p>
+      <p>Mutagen is a student coding and biology project by Hudson S. Classmates suggest small ideas, and approved ones are added to this page. The dish is a simple computer model of how bacteria grow, divide and mutate. The background changes each day: a program solving a Minesweeper board using only the clues a player can see, a reaction-diffusion simulation (the math behind coral and animal spots), a fluid simulation, or drifting Perlin noise drawn as a contour map.</p>
       <h3>How requests are handled</h3>
       <ul>
         <li>Only people on the class list can have a request added, so nothing is anonymous.</li>
@@ -373,6 +373,8 @@
     <button type="button" data-bg="" class="on">Today's pick</button>
     <button type="button" data-bg="mines">Minesweeper</button>
     <button type="button" data-bg="rd">Reaction diffusion</button>
+    <button type="button" data-bg="fluid">Fluid</button>
+    <button type="button" data-bg="noise">Perlin noise</button>
   </div>
   <div class="ss-hint" id="ss-hint" role="status">Click anywhere else or press a key to bring the page back</div>
 
@@ -573,20 +575,159 @@
         if (rd.age > 60000) { bgAttempt++; bgBegin(); } // start a fresh pattern once it has settled
       }
 
-      /* ---- which background to show. Odd days are Minesweeper, even days reaction diffusion.
+      /* ---- background: a fluid simulation (stable fluids). The velocity field is solved on a coarse
+         grid; the dye it carries lives on a grid with the same cell size as the Minesweeper board. ---- */
+      var fl = null;
+      function gridFor(seedName, seed) {
+        var w = window.innerWidth, h = window.innerHeight;
+        var size = Math.max(2, Math.ceil(Math.sqrt(w * h / MS_MAX_CELLS))); // same cell size as Minesweeper
+        var cols = Math.ceil(w / size), rows = Math.ceil(h / size);
+        bgCv.width = cols; bgCv.height = rows;
+        var img = bgCtx.createImageData(cols, rows);
+        return { r: rng(hash(seedName + seed)), cols: cols, rows: rows, n: cols * rows, aspect: w / h, img: img, px: new Uint32Array(img.data.buffer), age: 0 };
+      }
+      function flNew(seed) {
+        var g = gridFor('fluid', seed), K = 4, gw = Math.max(8, Math.ceil(g.cols / K)), gh = Math.max(8, Math.ceil(g.rows / K)), gn = gw * gh, r = g.r;
+        g.K = K; g.gw = gw; g.gh = gh; g.gn = gn;
+        ['u', 'v', 'u2', 'v2', 'p', 'p2', 'div'].forEach(function (k) { g[k] = new Float32Array(gn); });
+        g.dye = new Float32Array(g.n); g.dye2 = new Float32Array(g.n);
+        g.st = [];
+        for (var i = 0; i < 5; i++) g.st.push({ cx: .2 + r() * .6, cy: .2 + r() * .6, rx: .1 + r() * .22, ry: .1 + r() * .22, sp: (r() < .5 ? -1 : 1) * (.7 + r() * .8), ph: r() * 6.283 });
+        fl = g;
+        for (var k = 0; k < 40; k++) flIterate();
+      }
+      function flSamp(a, gw, gh, x, y) {
+        x = ((x % gw) + gw) % gw; y = ((y % gh) + gh) % gh;
+        var x0 = x | 0, y0 = y | 0, x1 = x0 + 1 === gw ? 0 : x0 + 1, y1 = y0 + 1 === gh ? 0 : y0 + 1, fx = x - x0, fy = y - y0;
+        return (a[y0 * gw + x0] * (1 - fx) + a[y0 * gw + x1] * fx) * (1 - fy) + (a[y1 * gw + x0] * (1 - fx) + a[y1 * gw + x1] * fx) * fy;
+      }
+      function flIterate() {
+        var g = fl, gw = g.gw, gh = g.gh, K = g.K, cols = g.cols, rows = g.rows, u = g.u, v = g.v, u2 = g.u2, v2 = g.v2, p = g.p, p2 = g.p2, div = g.div, dt = .9, i, x, y;
+        var t = g.age * .012;
+        // move velocity along itself
+        for (y = 0, i = 0; y < gh; y++) for (x = 0; x < gw; x++, i++) {
+          u2[i] = flSamp(u, gw, gh, x - dt * u[i], y - dt * v[i]) * .999;
+          v2[i] = flSamp(v, gw, gh, x - dt * u[i], y - dt * v[i]) * .999;
+        }
+        g.u = u2; g.v = v2; g.u2 = u; g.v2 = v;
+        // stirrers push the fluid around and drip dye
+        var rad = Math.max(3, gw * .06);
+        g.st.forEach(function (s) {
+          var a = s.ph + t * s.sp, sx = (s.cx + s.rx * Math.cos(a)) * gw, sy = (s.cy + s.ry * Math.sin(a * 1.31)) * gh;
+          var fx = -Math.sin(a) * s.rx * gw * s.sp * 5, fy = Math.cos(a * 1.31) * s.ry * gh * s.sp * 1.31 * 5;
+          for (var yy = Math.floor(sy - rad * 2); yy <= sy + rad * 2; yy++) for (var xx = Math.floor(sx - rad * 2); xx <= sx + rad * 2; xx++) {
+            var d2 = ((xx - sx) * (xx - sx) + (yy - sy) * (yy - sy)) / (rad * rad), w = Math.exp(-d2);
+            if (w < .02) continue;
+            var j = (((yy % gh) + gh) % gh) * gw + ((xx % gw) + gw) % gw;
+            g.u[j] += fx * w * .12; g.v[j] += fy * w * .12;
+          }
+          var dx0 = sx * K, dy0 = sy * K, dr = rad * K * .55;
+          for (var py = Math.max(0, Math.floor(dy0 - dr)); py <= Math.min(rows - 1, dy0 + dr); py++) for (var px = Math.max(0, Math.floor(dx0 - dr)); px <= Math.min(cols - 1, dx0 + dr); px++) {
+            if ((px - dx0) * (px - dx0) + (py - dy0) * (py - dy0) < dr * dr) { var q = py * cols + px; g.dye[q] = Math.min(1.4, g.dye[q] + .45); }
+          }
+        });
+        u = g.u; v = g.v;
+        // make the flow incompressible
+        for (y = 0, i = 0; y < gh; y++) { var ym = ((y + gh - 1) % gh) * gw, yp = ((y + 1) % gh) * gw, row = y * gw; for (x = 0; x < gw; x++, i++) { var xm = (x + gw - 1) % gw, xp = (x + 1) % gw; div[i] = -.5 * (u[row + xp] - u[row + xm] + v[yp + x] - v[ym + x]); } }
+        for (var it = 0; it < 18; it++) {
+          for (y = 0, i = 0; y < gh; y++) { var ym2 = ((y + gh - 1) % gh) * gw, yp2 = ((y + 1) % gh) * gw, row2 = y * gw; for (x = 0; x < gw; x++, i++) { var xm2 = (x + gw - 1) % gw, xp2 = (x + 1) % gw; p2[i] = (div[i] + p[row2 + xm2] + p[row2 + xp2] + p[ym2 + x] + p[yp2 + x]) * .25; } }
+          var tmp = p; p = p2; p2 = tmp;
+        }
+        g.p = p; g.p2 = p2;
+        for (y = 0, i = 0; y < gh; y++) { var ym3 = ((y + gh - 1) % gh) * gw, yp3 = ((y + 1) % gh) * gw, row3 = y * gw; for (x = 0; x < gw; x++, i++) { var xm3 = (x + gw - 1) % gw, xp3 = (x + 1) % gw; u[i] -= .5 * (p[row3 + xp3] - p[row3 + xm3]); v[i] -= .5 * (p[yp3 + x] - p[ym3 + x]); } }
+        // carry the dye along on the full-resolution grid
+        var dye = g.dye, dye2 = g.dye2, mx = cols - 1.001, my = rows - 1.001;
+        var gx0 = new Int32Array(cols), gx1 = new Int32Array(cols), gxf = new Float32Array(cols);
+        for (x = 0; x < cols; x++) { var sxx = x / K, a0 = sxx | 0; gx0[x] = a0; gx1[x] = a0 + 1 >= gw ? 0 : a0 + 1; gxf[x] = sxx - a0; }
+        for (y = 0, i = 0; y < rows; y++) {
+          var syy = y / K, b0 = Math.min(gh - 1, syy | 0), b1 = b0 + 1 >= gh ? 0 : b0 + 1, fy2 = syy - (syy | 0), r0 = b0 * gw, r1 = b1 * gw;
+          for (x = 0; x < cols; x++, i++) {
+            var fx2 = gxf[x], c0 = gx0[x], c1 = gx1[x];
+            var ux = ((u[r0 + c0] * (1 - fx2) + u[r0 + c1] * fx2) * (1 - fy2) + (u[r1 + c0] * (1 - fx2) + u[r1 + c1] * fx2) * fy2) * K * dt;
+            var uy = ((v[r0 + c0] * (1 - fx2) + v[r0 + c1] * fx2) * (1 - fy2) + (v[r1 + c0] * (1 - fx2) + v[r1 + c1] * fx2) * fy2) * K * dt;
+            var bx = x - ux, by = y - uy;
+            bx = bx < 0 ? 0 : bx > mx ? mx : bx; by = by < 0 ? 0 : by > my ? my : by;
+            var ix = bx | 0, iy = by | 0, ex = bx - ix, ey = by - iy, q0 = iy * cols + ix;
+            dye2[i] = ((dye[q0] * (1 - ex) + dye[q0 + 1] * ex) * (1 - ey) + (dye[q0 + cols] * (1 - ex) + dye[q0 + cols + 1] * ex) * ey) * .9985;
+          }
+        }
+        g.dye = dye2; g.dye2 = dye;
+        g.age++;
+      }
+      function flPaint() {
+        var g = fl, dye = g.dye, px = g.px;
+        for (var i = 0; i < g.n; i++) {
+          var t = dye[i] * 400 | 0;
+          px[i] = RD_PALETTE[t < 0 ? 0 : t > 255 ? 255 : t];
+        }
+        bgCtx.putImageData(g.img, 0, 0);
+      }
+      function flStep() {
+        flIterate(); flPaint();
+        if (fl.age > 7000) { bgAttempt++; bgBegin(); }
+      }
+
+      /* ---- background: Perlin noise, drifting layers of smooth gradient noise drawn as a contour map,
+         on the same grid as Minesweeper. ---- */
+      var pn = null;
+      function pnNew(seed) {
+        var g = gridFor('noise', seed), r = g.r, i;
+        g.perm = new Int32Array(512); g.gx = new Float32Array(256); g.gy = new Float32Array(256);
+        var base = []; for (i = 0; i < 256; i++) base.push(i);
+        for (i = 255; i > 0; i--) { var j = Math.floor(r() * (i + 1)), t = base[i]; base[i] = base[j]; base[j] = t; }
+        for (i = 0; i < 512; i++) g.perm[i] = base[i & 255];
+        for (i = 0; i < 256; i++) { var an = r() * 6.2832; g.gx[i] = Math.cos(an); g.gy[i] = Math.sin(an); }
+        g.acc = new Float32Array(g.n);
+        g.oct = [0, 1, 2].map(function (k) { var an = r() * 6.2832; return { freq: Math.pow(2, k) / (Math.max(g.cols, g.rows) / 3.2), amp: Math.pow(.5, k), ox: r() * 200, oy: r() * 200, dx: Math.cos(an) * (.0016 + k * .0012), dy: Math.sin(an) * (.0016 + k * .0012) }; });
+        g.xi = new Int32Array(g.cols); g.pa = new Int32Array(g.cols); g.pb = new Int32Array(g.cols); g.xf = new Float32Array(g.cols); g.xu = new Float32Array(g.cols);
+        g.skip = 0;
+        pn = g;
+        pnFrame();
+      }
+      function pnFrame() {
+        var g = pn, cols = g.cols, rows = g.rows, perm = g.perm, gx = g.gx, gy = g.gy, acc = g.acc, xi = g.xi, pa = g.pa, pb = g.pb, xf = g.xf, xu = g.xu, x, y, k;
+        for (k = 0; k < g.oct.length; k++) {
+          var o = g.oct[k], f = o.freq;
+          for (x = 0; x < cols; x++) { var fx = x * f + o.ox, fl0 = Math.floor(fx), d = fx - fl0; xi[x] = fl0 & 255; pa[x] = perm[xi[x]]; pb[x] = perm[xi[x] + 1]; xf[x] = d; xu[x] = d * d * d * (d * (d * 6 - 15) + 10); }
+          for (y = 0; y < rows; y++) {
+            var fy = y * f + o.oy, fyl = Math.floor(fy), yf = fy - fyl, yi = fyl & 255, yu = yf * yf * yf * (yf * (yf * 6 - 15) + 10), yf1 = yf - 1, row = y * cols;
+            for (x = 0; x < cols; x++) {
+              var h00 = perm[pa[x] + yi], h10 = perm[pb[x] + yi], h01 = perm[pa[x] + yi + 1], h11 = perm[pb[x] + yi + 1], dx = xf[x], dx1 = dx - 1, u = xu[x];
+              var n0 = (gx[h00] * dx + gy[h00] * yf) * (1 - u) + (gx[h10] * dx1 + gy[h10] * yf) * u;
+              var n1 = (gx[h01] * dx + gy[h01] * yf1) * (1 - u) + (gx[h11] * dx1 + gy[h11] * yf1) * u;
+              var val = (n0 * (1 - yu) + n1 * yu) * o.amp;
+              acc[row + x] = k === 0 ? val : acc[row + x] + val;
+            }
+          }
+          o.ox += o.dx * 60; o.oy += o.dy * 60;
+        }
+        var px = g.px, line = msColor(150, 160, 118);
+        for (var i = 0; i < g.n; i++) {
+          var t = .5 + acc[i] * .95, edge = t <= 0 || t >= 1; t = t < 0 ? 0 : t > 1 ? 1 : t;
+          var band = t * 12;
+          px[i] = !edge && band - Math.floor(band) < .085 ? line : RD_PALETTE[(t * t * 255) | 0];
+        }
+        bgCtx.putImageData(g.img, 0, 0);
+        g.age++;
+      }
+      function pnStep() { pn.skip = (pn.skip + 1) % 3; if (!pn.skip) pnFrame(); } // heavy, so it drifts a few times a second
+
+      /* ---- which background to show. The days cycle through four backgrounds.
          Each day has its own seed, so the record can rebuild that day's background. ---- */
-      var BG_NAMES = { mines: 'Minesweeper', rd: 'reaction diffusion' };
+      var BG_NAMES = { mines: 'Minesweeper', rd: 'reaction diffusion', fluid: 'fluid simulation', noise: 'Perlin noise' };
+      var BG_CYCLE = ['mines', 'rd', 'fluid', 'noise'];
       var bgReady = false, bgMode = null, bgDay = null, bgPick = null, bgAttempt = 0, bgSoon;
-      function bgModeFor(day) { return ((day % 2) + 2) % 2 === 0 ? 'rd' : 'mines'; }
+      function bgModeFor(day) { return BG_CYCLE[(((day - 1) % 4) + 4) % 4]; }
       function bgBegin() {
         var seed = (bgDay + 100000) * 64 + bgAttempt;
         bgCv.style.imageRendering = bgMode === 'rd' ? 'auto' : 'pixelated';
-        if (bgMode === 'rd') { ms = null; rdNew(seed); } else { rd = null; msNew(seed); }
+        ms = rd = fl = pn = null;
+        if (bgMode === 'rd') rdNew(seed); else if (bgMode === 'fluid') flNew(seed); else if (bgMode === 'noise') pnNew(seed); else msNew(seed);
       }
       function bgSync() {
         if (!bgReady || !window.innerWidth || !window.innerHeight) return;
         var day = viewDay === null ? todayDay() : viewDay, mode = bgPick || bgModeFor(day);
-        if (mode === bgMode && day === bgDay && (ms || rd)) return;
+        if (mode === bgMode && day === bgDay && (ms || rd || fl || pn)) return;
         bgMode = mode; bgDay = day; bgAttempt = 0;
         bgBegin();
       }
@@ -594,6 +735,8 @@
       function bgTick() {
         if (!bgReady) return;
         if (rd) rdStep();
+        else if (fl) flStep();
+        else if (pn) pnStep();
         else if (ms) msStep();
         else bgSync();
       }
@@ -855,13 +998,16 @@
 
       function resizeBg() {
         if (!bgReady || !window.innerWidth || !window.innerHeight) return; // Google Sites can load the frame at zero size
-        var current = rd || ms;
+        var current = rd || ms || fl || pn;
         if (!current) bgSync();
         else if (Math.abs(window.innerWidth / window.innerHeight - current.aspect) / current.aspect > .3) bgBegin();
-        if (reduce && (ms || rd)) {
+        if (reduce && (ms || rd || fl || pn)) {
           var stop = performance.now() + 400;
-          while (performance.now() < stop) { if (rd) rdIterate(); else if (!ms.over) msStep(); else break; }
-          if (rd) rdPaint(); else msPaintAll();
+          if (pn) pnFrame();
+          else {
+            while (performance.now() < stop) { if (rd) rdIterate(); else if (fl) flIterate(); else if (!ms.over) msStep(); else break; }
+            if (rd) rdPaint(); else if (fl) flPaint(); else msPaintAll();
+          }
         }
       }
 
