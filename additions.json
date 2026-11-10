@@ -27,5 +27,12 @@
     "submittedAt": "2026-11-10T08:42:04",
     "addedAt": "2026-11-10T08:42:49",
     "widget": "widgets/molecule-sim.html"
+  },
+  {
+    "text": "The evolution of monkeys",
+    "requestedBy": "Elias A.",
+    "submittedAt": "2026-11-10T08:54:43",
+    "addedAt": "2026-11-10T08:55:18",
+    "widget": "widgets/monkey-evolution.html"
   }
 ]

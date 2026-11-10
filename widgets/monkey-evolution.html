@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<style>
+html,body{margin:0;height:100%;background:#f5f0e1;color:#2f4a2a;font-family:Georgia,serif}
+#w{display:flex;flex-direction:column;height:100%;box-sizing:border-box;padding:.5rem;gap:.35rem}
+canvas{flex:1;min-height:0;width:100%;background:#e8e2cc;border-radius:.5rem}
+#info{font-size:clamp(.7rem,2.2vmin,1rem);line-height:1.25;min-height:2.5em}
+#info b{color:#4a6b3a}
+input{width:100%;accent-color:#4a6b3a}
+.row{display:flex;gap:.4rem;align-items:center}
+button{background:#4a6b3a;color:#f5f0e1;border:0;border-radius:.4rem;padding:.3rem .6rem;font:inherit;cursor:pointer}
+</style></head><body>
+<div id="w">
+<canvas id="c"></canvas>
+<div id="info"></div>
+<div class="row"><button id="p">Play</button><input id="s" type="range" min="0" max="1000" value="0" aria-label="Time"></div>
+</div>
+<script>
+const E=[
+[65,"Early primates","Small tree-dwelling mammals like Purgatorius appear, ancestors of all primates."],
+[55,"Prosimians","Lemur-like animals with big eyes and grasping hands spread through forests."],
+[40,"Simians arise","Monkeys, apes and humans share a common ancestor with better vision and bigger brains."],
+[35,"New World monkeys","Some monkeys reach South America, probably rafting on vegetation. They gain prehensile tails."],
+[25,"Old World monkeys","Africa and Asia monkeys split from the ape line. Baboons and macaques descend from them."],
+[20,"Apes diversify","Apes lose their tails and grow larger. Monkeys and apes are separate branches."],
+[7,"Human line splits","Our line separates from chimpanzees, so monkeys are cousins, not ancestors."]];
+const c=document.getElementById('c'),x=c.getContext('2d'),s=document.getElementById('s'),info=document.getElementById('info'),pb=document.getElementById('p');
+let t=0,play=false;
+function fit(){const r=c.getBoundingClientRect(),d=devicePixelRatio||1;c.width=r.width*d;c.height=r.height*d;draw()}
+function mya(){return 65-t*65}
+function draw(){
+const W=c.width,H=c.height,m=mya();x.clearRect(0,0,W,H);
+const px=v=>W*.05+(65-v)/65*W*.9;
+x.strokeStyle='#4a6b3a';x.lineWidth=H*.02;x.beginPath();x.moveTo(px(65),H*.5);x.lineTo(px(Math.max(m,40)),H*.5);x.stroke();
+const br=[[40,'Prosimians',.15,55],[35,'New World monkeys',.3,35],[25,'Old World monkeys',.7,25],[20,'Apes',.85,20]];
+x.font=H*.07+'px Georgia';
+for(const [st,n,y,_] of br){if(m<=st){const x0=px(st),x1=px(m);x.beginPath();x.moveTo(x0,H*.5);x.lineTo(x0+(x1-x0)*.2,H*y);x.lineTo(x1,H*y);x.stroke();x.fillStyle='#2f4a2a';x.textAlign='right';x.fillText(n,Math.min(W*.98,x1+W*.02+n.length*H*.035),H*y-H*.03)}}
+x.fillStyle='#b5651d';x.beginPath();x.arc(px(m),H*.5,H*.05,0,7);x.fill();
+x.fillStyle='#2f4a2a';x.textAlign='left';x.fillText(m.toFixed(0)+' million years ago',W*.05,H*.08);
+let cur=E[0];for(const e of E)if(m<=e[0])cur=e;
+info.innerHTML='<b>'+cur[1]+':</b> '+cur[2];
+}
+s.oninput=()=>{t=s.value/1000;draw()};
+pb.onclick=()=>{play=!play;pb.textContent=play?'Pause':'Play';if(play&&t>=1)t=0};
+setInterval(()=>{if(play){t=Math.min(1,t+.003);s.value=t*1000;if(t>=1){play=false;pb.textContent='Play'}draw()}},40);
+new ResizeObserver(fit).observe(c);fit();
+</script></body></html>
