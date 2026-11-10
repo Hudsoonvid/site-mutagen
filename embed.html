@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#e9eddc">
   <title>Mutagen — a living culture of ideas</title>
   <style>
@@ -36,11 +36,14 @@
       background-attachment: fixed;
     }
 
-    #bg { position: fixed; inset: 0; width: 100%; height: 100%; z-index: 0; pointer-events: none; opacity: .68; transition: opacity .8s; image-rendering: pixelated; }
+    /* faint behind the page so it doesn't distract, full strength as a screensaver */
+    #bg-wrap { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; height: 100lvh; z-index: 0; pointer-events: none; opacity: .3; transition: opacity .8s; }
+    #bg, #bg-old { position: absolute; inset: 0; width: 100%; height: 100%; image-rendering: pixelated; transition: opacity .8s; }
     #bg.fade { opacity: 0; }
+    #bg-old { opacity: 0; transition: opacity 2.4s ease-in-out; }
+    #bg-old.show { opacity: 1; transition: none; }
     body.saver .page { display: none; }
-    body.saver #bg { opacity: 1; }
-    body.saver #bg.fade { opacity: 0; }
+    body.saver #bg-wrap { opacity: 1; }
     .bar { flex-wrap: wrap; }
     .bar-right { display: inline-flex; flex-wrap: wrap; align-items: center; gap: .4rem .75rem; }
     .ss-btn { min-height: 1.9rem; padding: .25rem .6rem; border: 1px solid var(--line); border-radius: .35rem; background: var(--paper); color: var(--green); font: inherit; letter-spacing: inherit; text-transform: inherit; cursor: pointer; transition: background .2s, color .2s; }
@@ -51,10 +54,12 @@
     .ss-pick { position: fixed; left: 50%; bottom: 4.2rem; z-index: 3; display: none; flex-wrap: wrap; justify-content: center; gap: .4rem; width: max-content; max-width: calc(100% - 2rem); padding: .45rem; border-radius: .6rem; background: rgb(31 61 37 / 92%); transform: translateX(-50%); opacity: 0; transition: opacity .3s; }
     body.saver .ss-pick { display: flex; }
     body.saver .ss-pick.on, .ss-pick:focus-within { opacity: 1; }
+    .ss-pick { align-items: center; padding: .45rem .7rem; }
+    .ss-pick label { color: #fff; font-family: var(--mono); font-size: .75rem; }
+    .ss-pick select { min-height: 2.2rem; padding: .3rem .6rem; border: 1px solid #91aa7f; border-radius: .35rem; background: #1f3d25; color: #fff; font-family: var(--mono); font-size: .78rem; cursor: pointer; }
     .ss-pick button { min-height: 2.2rem; padding: .3rem .75rem; border: 1px solid #91aa7f; border-radius: .35rem; background: transparent; color: #fff; font-family: var(--mono); font-size: .75rem; cursor: pointer; }
     .ss-pick button:hover { background: rgb(255 255 255 / 14%); }
-    .ss-pick button.on { background: #fff; color: var(--green-d); }
-    .ss-pick button:focus-visible { outline: 3px solid #d7e8c8; outline-offset: 2px; }
+    .ss-pick button:focus-visible, .ss-pick select:focus-visible { outline: 3px solid #d7e8c8; outline-offset: 2px; }
     .limit-note { margin: 0 0 clamp(.8rem, 2vw, 1.1rem); padding: .7rem 1rem; border: 1px solid #d9b96a; border-radius: .6rem; background: #fff6dc; color: #5c4512; font-size: .92rem; line-height: 1.45; }
     .full-btn { margin-top: .45rem; min-height: 2rem; padding: .2rem .6rem; border: 1px solid var(--line); border-radius: .35rem; background: #f7f8ea; color: var(--green); font-family: var(--mono); font-size: .7rem; cursor: pointer; transition: background .2s, color .2s; }
     .full-btn:hover { background: var(--green); color: #fff; }
@@ -270,7 +275,7 @@
   </style>
 </head>
 <body>
-  <canvas id="bg" aria-hidden="true"></canvas>
+  <div id="bg-wrap" aria-hidden="true"><canvas id="bg"></canvas><canvas id="bg-old"></canvas></div>
   <div class="page">
     <header class="bar">
       <span class="brand">
@@ -282,7 +287,7 @@
 
     <section class="about" id="about-panel" aria-label="About this project" hidden>
       <h2>About this project</h2>
-      <p>Mutagen is a student coding and biology project by Hudson S. Classmates suggest small ideas, and approved ones are added to this page. The dish is a simple computer model of how bacteria grow, divide and mutate. The background changes each day: a program solving a Minesweeper board using only the clues a player can see, a reaction-diffusion simulation (the math behind coral and animal spots), a fluid simulation, or drifting Perlin noise drawn as a contour map.</p>
+      <p>Mutagen is a student coding and biology project by Hudson S. Classmates suggest small ideas, and approved ones are added to this page. The dish is a simple computer model of how bacteria grow, divide and mutate. The background changes each day: a program solving a Minesweeper board using only the clues a player can see, a reaction-diffusion simulation (the math behind coral and animal spots), a fluid simulation, drifting Perlin noise drawn as a contour map, a slime mold growing veins, Conway's Game of Life, spiraling cellular automata, ripples, crystal growth, or Langton's ants. The screensaver lets you pick any of them or cycle through them all.</p>
       <h3>How requests are handled</h3>
       <ul>
         <li>Only people on the class list can have a request added, so nothing is anonymous.</li>
@@ -370,11 +375,9 @@
     <span class="spot-label" id="spot-label"></span>
   </div>
   <div class="ss-pick" id="ss-pick" role="group" aria-label="Choose a background">
-    <button type="button" data-bg="" class="on">Today's pick</button>
-    <button type="button" data-bg="mines">Minesweeper</button>
-    <button type="button" data-bg="rd">Reaction diffusion</button>
-    <button type="button" data-bg="fluid">Fluid</button>
-    <button type="button" data-bg="noise">Perlin noise</button>
+    <label for="ss-sel">Background</label>
+    <select id="ss-sel"></select>
+    <button type="button" id="ss-full" hidden>Full screen</button>
   </div>
   <div class="ss-hint" id="ss-hint" role="status">Click anywhere else or press a key to bring the page back</div>
 
@@ -699,7 +702,7 @@
               acc[row + x] = k === 0 ? val : acc[row + x] + val;
             }
           }
-          o.ox += o.dx * 60; o.oy += o.dy * 60;
+          o.ox += o.dx * 16; o.oy += o.dy * 16; // slow drift
         }
         var px = g.px, line = msColor(150, 160, 118);
         for (var i = 0; i < g.n; i++) {
@@ -712,22 +715,183 @@
       }
       function pnStep() { pn.skip = (pn.skip + 1) % 3; if (!pn.skip) pnFrame(); } // heavy, so it drifts a few times a second
 
-      /* ---- which background to show. The days cycle through four backgrounds.
-         Each day has its own seed, so the record can rebuild that day's background. ---- */
-      var BG_NAMES = { mines: 'Minesweeper', rd: 'reaction diffusion', fluid: 'fluid simulation', noise: 'Perlin noise' };
-      var BG_CYCLE = ['mines', 'rd', 'fluid', 'noise'];
+      /* ---- which background to show. The days cycle through every background in order,
+         so the record knows which one a day had, and each one starts from a random seed. ---- */
+      /* ---- more grid backgrounds. Each one returns an object with step(), on the Minesweeper grid. ---- */
+      var bx = null;
+      function wrapAt(g, x, y) { var c = g.cols, h = g.rows; x = x | 0; y = y | 0; x %= c; if (x < 0) x += c; y %= h; if (y < 0) y += h; return y * c + x; }
+      var BX = {
+        // Conway's Game of Life, with fading trails and fresh noise sprinkled in so it never dies out
+        life: function (seed) {
+          var g = gridFor('life', seed), r = g.r, n = g.n, c = g.cols, h = g.rows, a = new Uint8Array(n), b = new Uint8Array(n), trail = new Uint8Array(n);
+          function sprinkle(x0, y0, w, hh) { for (var y = y0; y < y0 + hh; y++) for (var x = x0; x < x0 + w; x++) a[wrapAt(g, x, y)] = r() < .35 ? 1 : 0; }
+          sprinkle(0, 0, c, h);
+          g.step = function () {
+            for (var y = 0, i = 0; y < h; y++) {
+              var up = ((y + h - 1) % h) * c, dn = ((y + 1) % h) * c, row = y * c;
+              for (var x = 0; x < c; x++, i++) {
+                var l = x ? x - 1 : c - 1, rr = x + 1 < c ? x + 1 : 0;
+                var s = a[up + l] + a[up + x] + a[up + rr] + a[row + l] + a[row + rr] + a[dn + l] + a[dn + x] + a[dn + rr];
+                var v = s === 3 || (s === 2 && a[i]) ? 1 : 0;
+                b[i] = v; trail[i] = v ? 255 : trail[i] > 5 ? trail[i] - 5 : 0;
+                g.px[i] = RD_PALETTE[v ? 255 : trail[i] >> 1];
+              }
+            }
+            var t = a; a = b; b = t;
+            bgCtx.putImageData(g.img, 0, 0);
+            if (++g.age % 120 === 0) { var w = 10 + (r() * c * .12 | 0); sprinkle(r() * c | 0, r() * h | 0, w, w); }
+          };
+          return g;
+        },
+        // cyclic cellular automaton: each cell is eaten by the next state around the wheel, which makes spirals
+        cyclic: function (seed) {
+          var g = gridFor('cyclic', seed), r = g.r, n = g.n, c = g.cols, h = g.rows, N = 14, a = new Uint8Array(n), b = new Uint8Array(n);
+          for (var i = 0; i < n; i++) a[i] = r() * N | 0;
+          g.step = function () {
+            for (var k = 0; k < 2; k++) {
+              for (var y = 0, i = 0; y < h; y++) {
+                var up = ((y + h - 1) % h) * c, dn = ((y + 1) % h) * c, row = y * c;
+                for (var x = 0; x < c; x++, i++) {
+                  var nx = a[i] + 1 === N ? 0 : a[i] + 1;
+                  b[i] = a[up + x] === nx || a[dn + x] === nx || a[row + (x ? x - 1 : c - 1)] === nx || a[row + (x + 1 < c ? x + 1 : 0)] === nx ? nx : a[i];
+                }
+              }
+              var t = a; a = b; b = t;
+            }
+            for (var j = 0; j < n; j++) g.px[j] = RD_PALETTE[a[j] * 18];
+            bgCtx.putImageData(g.img, 0, 0);
+            if (++g.age > 5000) { bgAttempt++; bgBegin(); }
+          };
+          return g;
+        },
+        // Langton's ants: each ant turns right on an empty cell and left on a marked one, flipping it as it goes
+        ants: function (seed) {
+          var g = gridFor('ants', seed), r = g.r, n = g.n, on = new Uint8Array(n), ants = [], DX = [0, 1, 0, -1], DY = [-1, 0, 1, 0];
+          for (var k = 0; k < 10; k++) ants.push({ x: r() * g.cols | 0, y: r() * g.rows | 0, d: r() * 4 | 0, tint: 150 + k * 10 });
+          for (var i = 0; i < n; i++) g.px[i] = RD_PALETTE[0];
+          g.step = function () {
+            ants.forEach(function (a) {
+              for (var s = 0; s < 300; s++) {
+                var j = a.y * g.cols + a.x;
+                a.d = (a.d + (on[j] ? 3 : 1)) & 3;
+                on[j] ^= 1;
+                g.px[j] = RD_PALETTE[on[j] ? a.tint : 40];
+                a.x += DX[a.d]; a.y += DY[a.d];
+                if (a.x < 0) a.x += g.cols; else if (a.x >= g.cols) a.x -= g.cols;
+                if (a.y < 0) a.y += g.rows; else if (a.y >= g.rows) a.y -= g.rows;
+              }
+            });
+            bgCtx.putImageData(g.img, 0, 0);
+            if (++g.age > 9000) { bgAttempt++; bgBegin(); }
+          };
+          return g;
+        },
+        // crystal growth by diffusion-limited aggregation: wandering particles stick when they touch the crystal
+        dla: function (seed) {
+          var g = gridFor('dla', seed), r = g.r, n = g.n, c = g.cols, h = g.rows, occ = new Uint8Array(n), W = 4000, wx = new Int32Array(W), wy = new Int32Array(W), stuck = 0, pts = [];
+          for (var i = 0; i < n; i++) g.px[i] = RD_PALETTE[0];
+          function stick(j) { occ[j] = 1; stuck++; pts.push(j); g.px[j] = RD_PALETTE[255 - ((g.age / 6 | 0) % 150)]; }
+          for (var k = 0; k < 7; k++) stick(wrapAt(g, c * (.15 + r() * .7), h * (.15 + r() * .7)));
+          function spawn(w) { // particles appear a short way from the crystal, so it grows quickly
+            for (var tries = 0; tries < 20; tries++) {
+              var p = pts[r() * pts.length | 0], a = r() * 6.2832, d = 10 + r() * 26, j = wrapAt(g, p % c + Math.cos(a) * d, (p / c | 0) + Math.sin(a) * d);
+              if (!occ[j]) { wx[w] = j % c; wy[w] = j / c | 0; return; }
+            }
+            wx[w] = r() * c | 0; wy[w] = r() * h | 0;
+          }
+          for (var w0 = 0; w0 < W; w0++) spawn(w0);
+          g.step = function () {
+            for (var w = 0; w < W; w++) {
+              for (var s = 0; s < 16; s++) {
+                var x = wx[w], y = wy[w];
+                if (occ[wrapAt(g, x + 1, y)] || occ[wrapAt(g, x - 1, y)] || occ[wrapAt(g, x, y + 1)] || occ[wrapAt(g, x, y - 1)]) { stick(y * c + x); spawn(w); break; }
+                var m = r() * 4 | 0;
+                wx[w] = (x + (m === 0 ? 1 : m === 1 ? c - 1 : 0)) % c; wy[w] = (y + (m === 2 ? 1 : m === 3 ? h - 1 : 0)) % h;
+              }
+            }
+            bgCtx.putImageData(g.img, 0, 0);
+            if (++g.age > 12000 || stuck > n * .3) { bgAttempt++; bgBegin(); }
+          };
+          return g;
+        },
+        // ripples: the wave equation, with drops falling at random
+        ripples: function (seed) {
+          var g = gridFor('ripples', seed), r = g.r, n = g.n, c = g.cols, h = g.rows, a = new Float32Array(n), b = new Float32Array(n);
+          g.step = function () {
+            if (r() < .25) { var cx = r() * c, cy = r() * h, rad = 2 + r() * 3; for (var dy = -rad; dy <= rad; dy++) for (var dx = -rad; dx <= rad; dx++) if (dx * dx + dy * dy <= rad * rad) a[wrapAt(g, cx + dx, cy + dy)] += 1.4; }
+            for (var k = 0; k < 2; k++) {
+              for (var y = 0, i = 0; y < h; y++) {
+                var up = ((y + h - 1) % h) * c, dn = ((y + 1) % h) * c, row = y * c;
+                for (var x = 0; x < c; x++, i++) b[i] = ((a[up + x] + a[dn + x] + a[row + (x ? x - 1 : c - 1)] + a[row + (x + 1 < c ? x + 1 : 0)]) * .5 - b[i]) * .992;
+              }
+              var t = a; a = b; b = t;
+            }
+            for (var j = 0; j < n; j++) { var v = 70 + a[j] * 260 | 0; g.px[j] = RD_PALETTE[v < 0 ? 0 : v > 255 ? 255 : v]; }
+            bgCtx.putImageData(g.img, 0, 0);
+            g.age++;
+          };
+          return g;
+        },
+        // slime mold (Physarum): thousands of agents follow and lay down a chemical trail, forming vein networks
+        slime: function (seed) {
+          var g = gridFor('slime', seed), r = g.r, n = g.n, c = g.cols, h = g.rows, A = Math.min(70000, n / 4 | 0);
+          var ax = new Float32Array(A), ay = new Float32Array(A), ang = new Float32Array(A), tr = new Float32Array(n), tmp = new Float32Array(n);
+          var SA = .45, SD = Math.max(4, Math.min(c, h) * .02), TURN = .4;
+          var spots = []; for (var q = 2 + (r() * 4 | 0); q > 0; q--) spots.push([c * (.15 + r() * .7), h * (.15 + r() * .7), Math.min(c, h) * (.06 + r() * .16)]);
+          for (var i = 0; i < A; i++) { var sp = spots[i % spots.length], a0 = r() * 6.2832, d0 = Math.sqrt(r()) * sp[2]; ax[i] = (sp[0] + Math.cos(a0) * d0 + c) % c; ay[i] = (sp[1] + Math.sin(a0) * d0 + h) % h; ang[i] = a0 + Math.PI; }
+          g.step = function () {
+            for (var i = 0; i < A; i++) {
+              var x = ax[i], y = ay[i], t = ang[i];
+              var f = tr[wrapAt(g, x + Math.cos(t) * SD, y + Math.sin(t) * SD)];
+              var lf = tr[wrapAt(g, x + Math.cos(t - SA) * SD, y + Math.sin(t - SA) * SD)];
+              var rt = tr[wrapAt(g, x + Math.cos(t + SA) * SD, y + Math.sin(t + SA) * SD)];
+              if (f < lf && f < rt) t += (r() < .5 ? -1 : 1) * TURN; else if (lf > rt) t -= TURN; else if (rt > lf) t += TURN;
+              x += Math.cos(t); y += Math.sin(t);
+              if (x < 0) x += c; else if (x >= c) x -= c;
+              if (y < 0) y += h; else if (y >= h) y -= h;
+              ax[i] = x; ay[i] = y; ang[i] = t;
+              var j = (y | 0) * c + (x | 0); tr[j] = Math.min(tr[j] + 4, 40);
+            }
+            for (var yy = 0, k = 0; yy < h; yy++) {
+              var up = ((yy + h - 1) % h) * c, dn = ((yy + 1) % h) * c, row = yy * c;
+              for (var xx = 0; xx < c; xx++, k++) {
+                var l = xx ? xx - 1 : c - 1, rr = xx + 1 < c ? xx + 1 : 0;
+                var v = (tr[up + l] + tr[up + xx] + tr[up + rr] + tr[row + l] + tr[k] + tr[row + rr] + tr[dn + l] + tr[dn + xx] + tr[dn + rr]) / 9 * .9;
+                tmp[k] = v; var p = v * 22 | 0; g.px[k] = RD_PALETTE[p > 255 ? 255 : p];
+              }
+            }
+            var s = tr; tr = tmp; tmp = s;
+            bgCtx.putImageData(g.img, 0, 0);
+            if (++g.age > 8000) { bgAttempt++; bgBegin(); }
+          };
+          return g;
+        }
+      };
+
+      var BG_NAMES = { mines: 'Minesweeper', rd: 'reaction diffusion', fluid: 'fluid simulation', noise: 'Perlin noise', slime: 'slime mold', life: 'Game of Life', cyclic: 'cyclic automaton spirals', ripples: 'ripples', dla: 'crystal growth', ants: "Langton's ants" };
+      var BG_CYCLE = ['mines', 'rd', 'fluid', 'noise', 'slime', 'life', 'cyclic', 'ripples', 'dla', 'ants'];
       var bgReady = false, bgMode = null, bgDay = null, bgPick = null, bgAttempt = 0, bgSoon;
-      function bgModeFor(day) { return BG_CYCLE[(((day - 1) % 4) + 4) % 4]; }
+      function bgModeFor(day) { var k = BG_CYCLE.length; return BG_CYCLE[(((day - 1) % k) + k) % k]; }
+      var bgOldCv = document.getElementById('bg-old'), bgOldCtx = bgOldCv.getContext('2d'), bgHasOld = false;
+      function bgSnap() { // keeps the last picture on top and fades it out over the new one
+        if (!(ms || rd || fl || pn || bx) || !bgCv.width) return false;
+        bgOldCv.width = bgCv.width; bgOldCv.height = bgCv.height;
+        bgOldCv.style.imageRendering = bgCv.style.imageRendering;
+        bgOldCtx.drawImage(bgCv, 0, 0);
+        bgOldCv.classList.add('show'); void bgOldCv.offsetWidth; bgOldCv.classList.remove('show');
+        return true;
+      }
       function bgBegin() {
-        var seed = (bgDay + 100000) * 64 + bgAttempt;
+        var seed = Math.random() * 1e9 | 0; // every start is different
+        bgHasOld = bgSnap();
         bgCv.style.imageRendering = bgMode === 'rd' ? 'auto' : 'pixelated';
-        ms = rd = fl = pn = null;
-        if (bgMode === 'rd') rdNew(seed); else if (bgMode === 'fluid') flNew(seed); else if (bgMode === 'noise') pnNew(seed); else msNew(seed);
+        ms = rd = fl = pn = bx = null;
+        if (bgMode === 'rd') rdNew(seed); else if (bgMode === 'fluid') flNew(seed); else if (bgMode === 'noise') pnNew(seed); else if (BX[bgMode]) bx = BX[bgMode](seed); else msNew(seed);
       }
       function bgSync() {
         if (!bgReady || !window.innerWidth || !window.innerHeight) return;
         var day = viewDay === null ? todayDay() : viewDay, mode = bgPick || bgModeFor(day);
-        if (mode === bgMode && day === bgDay && (ms || rd || fl || pn)) return;
+        if (mode === bgMode && day === bgDay && (ms || rd || fl || pn || bx)) return;
         bgMode = mode; bgDay = day; bgAttempt = 0;
         bgBegin();
       }
@@ -737,6 +901,7 @@
         if (rd) rdStep();
         else if (fl) flStep();
         else if (pn) pnStep();
+        else if (bx) bx.step();
         else if (ms) msStep();
         else bgSync();
       }
@@ -998,12 +1163,13 @@
 
       function resizeBg() {
         if (!bgReady || !window.innerWidth || !window.innerHeight) return; // Google Sites can load the frame at zero size
-        var current = rd || ms || fl || pn;
+        var current = rd || ms || fl || pn || bx;
         if (!current) bgSync();
-        else if (Math.abs(window.innerWidth / window.innerHeight - current.aspect) / current.aspect > .3) bgBegin();
-        if (reduce && (ms || rd || fl || pn)) {
+        else if (Math.abs(window.innerWidth / window.innerHeight - current.aspect) / current.aspect > .15) bgBegin(); // rebuild to fit a new screen shape
+        if (reduce && (ms || rd || fl || pn || bx)) {
           var stop = performance.now() + 400;
           if (pn) pnFrame();
+          else if (bx) { while (performance.now() < stop) bx.step(); }
           else {
             while (performance.now() < stop) { if (rd) rdIterate(); else if (fl) flIterate(); else if (!ms.over) msStep(); else break; }
             if (rd) rdPaint(); else if (fl) flPaint(); else msPaintAll();
@@ -1716,17 +1882,35 @@
         clearTimeout(ssTimer);
         ssTimer = setTimeout(function () { ssHint.classList.remove('on'); ssPick.classList.remove('on'); }, 3500);
       }
+      var ssSel = document.getElementById('ss-sel'), ssCycle = null;
+      [['', "Today's pick"], ['cycle', 'Cycle through all']].concat(BG_CYCLE.map(function (m) { return [m, BG_NAMES[m].charAt(0).toUpperCase() + BG_NAMES[m].slice(1)]; })).forEach(function (o) {
+        var op = document.createElement('option'); op.value = o[0]; op.textContent = o[1]; ssSel.appendChild(op);
+      });
       function ssChoose(value) {
-        bgPick = value || null;
-        [].forEach.call(ssPick.querySelectorAll('button'), function (b) { b.classList.toggle('on', b.dataset.bg === value); });
+        clearInterval(ssCycle); ssCycle = null;
+        ssSel.value = value;
+        if (value === 'cycle') { // a new background every 40 seconds
+          bgPick = BG_CYCLE[(Math.max(0, BG_CYCLE.indexOf(bgMode)) + 1) % BG_CYCLE.length];
+          ssCycle = setInterval(function () { bgPick = BG_CYCLE[(BG_CYCLE.indexOf(bgPick) + 1) % BG_CYCLE.length]; bgSync(); }, 40000);
+        } else bgPick = value || null;
         bgSync();
       }
-      ssPick.addEventListener('click', function (e) {
-        e.stopPropagation();
-        var button = e.target.closest('button');
-        if (button) { ssChoose(button.dataset.bg); ssShowHint(); }
+      ssSel.addEventListener('change', function () { ssChoose(ssSel.value); ssShowHint(); });
+      // full screen for the screensaver, where the browser allows it (iPhones don't)
+      var ssFull = document.getElementById('ss-full'), root = document.documentElement;
+      function fsEl() { return document.fullscreenElement || document.webkitFullscreenElement; }
+      function fsExit() { if (fsEl()) (document.exitFullscreen || document.webkitExitFullscreen).call(document); }
+      ssFull.hidden = !(document.fullscreenEnabled || document.webkitFullscreenEnabled);
+      ssFull.addEventListener('click', function () {
+        if (fsEl()) fsExit();
+        else { var p = (root.requestFullscreen || root.webkitRequestFullscreen).call(root); if (p && p.catch) p.catch(function () {}); }
       });
+      ['fullscreenchange', 'webkitfullscreenchange'].forEach(function (ev) {
+        document.addEventListener(ev, function () { ssFull.textContent = fsEl() ? 'Exit full screen' : 'Full screen'; setTimeout(resizeBg, 300); });
+      });
+      ssPick.addEventListener('click', function (e) { e.stopPropagation(); });
       function ssExit() {
+        fsExit();
         document.body.classList.remove('saver');
         ssHint.classList.remove('on');
         ssPick.classList.remove('on');
