@@ -7,14 +7,6 @@
     "widget": "widgets/drawing-tablet.html"
   },
   {
-    "text": "Game where you create genome structures for the color of skin",
-    "prompt": "Game where you create genome structures for the color of skin by using building blocks such as A, G, T, etc. Then, once you make your DNA strand it shows you what skin color you made",
-    "requestedBy": "Harrison S.",
-    "submittedAt": "2026-11-08T20:31:20",
-    "addedAt": "2026-11-08T21:03:30",
-    "widget": "widgets/genome-skin.html"
-  },
-  {
     "text": "Dark mode",
     "requestedBy": "Hudson S.",
     "submittedAt": "2026-11-09T06:43:10",
