@@ -20,25 +20,5 @@
     "submittedAt": "2026-11-09T06:43:10",
     "addedAt": "2026-11-09T06:43:54",
     "pointsTo": "dark-btn"
-  },
-  {
-    "text": "Add an earthquake simulator",
-    "requestedBy": "Hudson S.",
-    "submittedAt": "2026-11-09T07:57:30",
-    "addedAt": "2026-11-09T22:03:30",
-    "widget": "widgets/earthquake-simulator.html"
-  },
-  {
-    "text": "Does this work",
-    "requestedBy": "Hudson S.",
-    "submittedAt": "2026-11-09T10:52:30",
-    "addedAt": "2026-11-09T22:03:30"
-  },
-  {
-    "text": "Add playable minesweeper",
-    "requestedBy": "Harrison S.",
-    "submittedAt": "2026-11-09T20:12:59",
-    "addedAt": "2026-11-09T22:03:30",
-    "widget": "widgets/minesweeper.html"
   }
 ]
